@@ -18,6 +18,9 @@ from . import utils
 from .models import Aspect, Chart, PlanetPosition, SolarArcResult, TransitForecast
 from .interpretation_store import (
     InterpretationLibrary,
+    _default_aspect_text,
+    _default_planet_role,
+    _default_sign_text,
     load_interpretation_library,
 )
 
@@ -125,9 +128,175 @@ def interpret_aspect(asp: Aspect) -> str:
     return f"{header}\n   {body}"
 
 
+def _default_planet_sign_value(planet_name: str, sign: str) -> str:
+    """Compute the auto-generated default for a planet-sign combination
+    using the ORIGINAL default sign_text (not the current, possibly customized one)."""
+    role = _default_planet_role().get(planet_name, planet_name)
+    keywords = _default_sign_text().get(sign, sign)
+    return f"{role} expresses through {sign}'s {keywords}"
+
+
+def _planet_sign_text(planet_name: str, sign: str) -> str:
+    """Look up per-planet-in-sign text.
+
+    Uses the stored override if the user has customized it; regenerates from
+    current atoms (planet_role + sign_text) when the stored value is the
+    stale auto-generated default. This way customizing sign_text always
+    propagates to reports.
+    """
+    lib = _library()
+    key = f"{planet_name} in {sign}"
+    stored = lib.planet_sign.get(key)
+    # Regenerate from current atoms
+    role = lib.planet_role.get(planet_name, planet_name)
+    keywords = lib.sign_text.get(sign, sign)
+    current = f"{role} expresses through {sign}'s {keywords}"
+    if stored is None:
+        return current
+    # If stored matches the auto-generated default, it may be stale — use current
+    if stored == _default_planet_sign_value(planet_name, sign):
+        return current
+    # User has explicitly customized this entry
+    return stored
+
+
+def _default_planet_house_value(planet_name: str, house: int) -> str:
+    """Compute the auto-generated default for a planet-house combination."""
+    role = _default_planet_role().get(planet_name, planet_name)
+    house_meanings = {
+        1: "self, identity and new beginnings", 2: "values, money and self-worth",
+        3: "communication, learning and the local environment", 4: "home, family and roots",
+        5: "creativity, romance and self-expression", 6: "work, health and daily routines",
+        7: "partnerships and one-to-one relationships", 8: "transformation, shared resources and intimacy",
+        9: "higher learning, travel and philosophy", 10: "career, reputation and public standing",
+        11: "friendships, groups and aspirations", 12: "solitude, spirituality and the unconscious",
+    }
+    meaning = house_meanings.get(house, f"house {house}")
+    return f"{role} finds its outlet in house {house}, colouring your {meaning}"
+
+
+def _planet_house_text(planet_name: str, house: Optional[int]) -> str:
+    """Look up per-planet-in-house text, with staleness-aware fallback."""
+    if not house:
+        return ""
+    lib = _library()
+    key = f"{planet_name} in house {house}"
+    stored = lib.planet_house.get(key)
+    role = lib.planet_role.get(planet_name, planet_name)
+    house_meanings = {
+        1: "self, identity and new beginnings", 2: "values, money and self-worth",
+        3: "communication, learning and the local environment", 4: "home, family and roots",
+        5: "creativity, romance and self-expression", 6: "work, health and daily routines",
+        7: "partnerships and one-to-one relationships", 8: "transformation, shared resources and intimacy",
+        9: "higher learning, travel and philosophy", 10: "career, reputation and public standing",
+        11: "friendships, groups and aspirations", 12: "solitude, spirituality and the unconscious",
+    }
+    meaning = house_meanings.get(house, f"house {house}")
+    current = f"{role} finds its outlet in house {house}, colouring your {meaning}"
+    if stored is None:
+        return current
+    if stored == _default_planet_house_value(planet_name, house):
+        return current
+    return stored
+
+
+def _retrograde_note(planet_name: str) -> str:
+    """Look up retrograde qualifier text, if any."""
+    return _library().planet_sign_retro.get(planet_name, "")
+
+
+def _default_aspect_pair_value(planet1: str, planet2: str, aspect_type: str) -> str:
+    """Compute the auto-generated default for a planet-pair aspect."""
+    roles = _default_planet_role()
+    aspects = _default_aspect_text()
+    verb = aspects.get(aspect_type, f"{aspect_type} contact")
+    role1 = roles.get(planet1, planet1)
+    role2 = roles.get(planet2, planet2)
+    return f"{role1} {verb} {role2}"
+
+
+def _aspect_pair_text(planet1: str, planet2: str, aspect_type: str) -> str:
+    """Look up per-pair aspect text, with staleness-aware fallback."""
+    lib = _library()
+    key = f"{planet1} {aspect_type.lower()} {planet2}"
+    stored = lib.aspect_pair.get(key)
+    verb = lib.aspect_text.get(aspect_type, f"{aspect_type} contact")
+    role1 = lib.planet_role.get(planet1, planet1)
+    role2 = lib.planet_role.get(planet2, planet2)
+    current = f"{role1} {verb} {role2}"
+    if stored is None:
+        return current
+    if stored == _default_aspect_pair_value(planet1, planet2, aspect_type):
+        return current
+    return stored
+
+
+def _default_angle_sign_value(angle: str, sign: str) -> str:
+    """Compute the auto-generated default for an angle-sign combination."""
+    keywords = _default_sign_text().get(sign, sign)
+    return f"{angle} in {sign}: presents itself with {sign}'s {keywords}"
+
+
+def _angle_sign_text(angle: str, sign: str) -> str:
+    """Look up angle-in-sign text, with staleness-aware fallback."""
+    lib = _library()
+    key = f"{angle} in {sign}"
+    stored = lib.angle_sign.get(key)
+    keywords = lib.sign_text.get(sign, sign)
+    current = f"{angle} in {sign}: presents itself with {sign}'s {keywords}"
+    if stored is None:
+        return current
+    if stored == _default_angle_sign_value(angle, sign):
+        return current
+    return stored
+
+
 def birth_interpretation(chart: Chart) -> str:
-    """Natal interpretation (currently a compact sun-sign write-up)."""
-    return natal_sun_text(chart)
+    """Full natal interpretation composed from the combination libraries."""
+    lib = _library()
+    lines: List[str] = []
+
+    # --- Sun / Moon blend ---
+    sun = next((p for p in chart.positions if p.name == "Sun"), None)
+    moon = next((p for p in chart.positions if p.name == "Moon"), None)
+    if sun and moon:
+        blend_key = f"Sun {sun.sign} · Moon {moon.sign}"
+        blend = lib.sun_moon.get(blend_key, "")
+        if blend:
+            lines += [blend, ""]
+
+    # --- Angle placements ---
+    angle_lines: List[str] = []
+    for angle_name in ("Ascendant", "MC"):
+        lon = chart.angles.get(angle_name)
+        if lon is not None:
+            sign = utils.sign_of(lon)
+            angle_lines.append(_angle_sign_text(angle_name, sign))
+    if angle_lines:
+        lines += angle_lines + [""]
+
+    # --- Planet placements ---
+    for pos in chart.positions:
+        parts: List[str] = []
+        placement = _planet_sign_text(pos.name, pos.sign)
+        house_txt = _planet_house_text(pos.name, pos.house)
+        retro = _retrograde_note(pos.name) if pos.motion == "retrograde" else ""
+        parts.append(placement)
+        if house_txt:
+            parts.append(house_txt)
+        if retro:
+            parts.append(retro)
+        lines.append(". ".join(parts) + ".")
+
+    # --- Aspects ---
+    if chart.aspects:
+        lines += ["", "ASPECTS", ""]
+        for asp in chart.aspects:
+            pair = _aspect_pair_text(asp.planet1_name, asp.planet2_name, asp.type_name)
+            lines.append(f"{asp.planet1_name} {asp.symbol} {asp.planet2_name} "
+                         f"({asp.kind} orb {abs(asp.orb):.2f}°): {pair}")
+
+    return "\n".join(lines)
 
 
 def progression_interpretation(prog: Chart) -> str:
