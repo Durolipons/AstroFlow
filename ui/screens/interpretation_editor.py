@@ -26,6 +26,17 @@ _CATEGORY_LABELS = {
     "sky_aspect_text": "Sky aspect wording",
     "planet_sky_note": "Sky planet notes",
     "sign_sky_note": "Sign sky notes",
+    # --- Natal combination libraries ---
+    "planet_sign": "Planet in sign",
+    "planet_house": "Planet in house",
+    "sun_moon": "Sun / Moon blend",
+    "aspect_pair": "Planet-pair aspect",
+    "angle_sign": "Angle in sign",
+    "planet_sign_retro": "Retrograde note",
+    # --- Astro-Clock forecast libraries ---
+    "forecast_ingress": "Forecast ingress",
+    "forecast_station": "Forecast station",
+    "forecast_phase": "Forecast lunation",
 }
 _LABEL_TO_CATEGORY = {label: key for key, label in _CATEGORY_LABELS.items()}
 _CATEGORY_ORDER = tuple(_CATEGORY_LABELS.keys())

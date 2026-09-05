@@ -123,3 +123,40 @@ def test_editor_rejects_blank_text(editor_screen):
     screen.value_input.text = "   "
     screen.save_entry()
     assert "cannot be blank" in screen.status_label.text.lower()
+
+
+def test_editor_shows_new_natal_categories(editor_screen):
+    """New natal combination categories appear in the spinner."""
+    screen, _ = editor_screen
+    labels = list(screen.category_spinner.values)
+    for label in ("Planet in sign", "Planet in house", "Sun / Moon blend",
+                  "Planet-pair aspect", "Angle in sign", "Retrograde note"):
+        assert label in labels
+
+
+def test_editor_shows_new_forecast_categories(editor_screen):
+    """New Astro-Clock forecast categories appear in the spinner."""
+    screen, _ = editor_screen
+    labels = list(screen.category_spinner.values)
+    for label in ("Forecast ingress", "Forecast station", "Forecast lunation"):
+        assert label in labels
+
+
+def test_editor_planet_sign_category_loads_entries(editor_screen):
+    """Selecting 'Planet in sign' populates the entry spinner with planet-sign keys."""
+    screen, _ = editor_screen
+    screen.select_category("Planet in sign")
+    assert screen._category == "planet_sign"
+    assert "Sun in Gemini" in screen.entry_spinner.values
+    assert "Moon in Cancer" in screen.entry_spinner.values
+    assert screen.value_input.text  # default text loaded
+
+
+def test_editor_forecast_phase_category_loads_entries(editor_screen):
+    """Selecting 'Forecast lunation' populates the entry spinner with phase keys."""
+    screen, _ = editor_screen
+    screen.select_category("Forecast lunation")
+    assert screen._category == "forecast_phase"
+    assert "Full Moon" in screen.entry_spinner.values
+    assert "New Moon" in screen.entry_spinner.values
+    assert screen.value_input.text  # default text loaded
