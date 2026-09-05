@@ -1,0 +1,16 @@
+# AstroFlow runtime dependencies
+#
+# IMPORTANT — Python version compatibility (verified against PyPI wheels):
+#   * pyswisseph 2.10.3.2 ships binary wheels only for Python 3.10/3.11 on
+#     Windows (cp310/cp311). Use Python 3.10 or 3.11 to avoid source builds.
+#   * Kivy 2.3.1 ships wheels for Python 3.8 -> 3.13 (not 3.14 yet).
+#   Recommended: Python 3.10.
+#
+pyswisseph==2.10.3.2
+kivy==2.3.1
+
+# tzdata: IANA timezone database for Windows (zoneinfo backport data).
+tzdata
+
+# Development / test only
+pytest

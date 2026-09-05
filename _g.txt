@@ -1,0 +1,91 @@
+def to_local(self, x, y, relative=False):
+        """Transform parent coordinates to local (current widget) coordinates.
+
+        See :mod:`~kivy.uix.relativelayout` for details on the coordinate
+        systems.
+
+        :Parameters:
+            `relative`: bool, defaults to False
+                Change to True if you want to translate coordinates to
+                relative widget coordinates.
+        """
+        if relative:
+            return (x - self.x, y - self.y)
+        return (x, y)
+
+    def _apply_transform(self, m, pos=None):
+        if self.parent:
+            x, y = self.parent.to_widget(relative=True,
+                                         *self.to_window(*(pos or self.pos))
+-----
+def to_parent(self, x, y, relative=False):
+        """Transform local (current widget) coordinates to parent coordinates.
+
+        See :mod:`~kivy.uix.relativelayout` for details on the coordinate
+        systems.
+
+        :Parameters:
+            `relative`: bool, defaults to False
+                Change to True if you want to translate relative positions from
+                a widget to its parent coordinates.
+        """
+        if relative:
+            return (x + self.x, y + self.y)
+        return (x, y)
+
+    def to_local(self, x, y, relative=False):
+        """Transform parent coordinates to local (current widget) coordinates.
+
+        See :mod:`~kivy.uix.relativelayout` for details on
+-----
+vy.core.window.WindowBase.screenshot` to capture the
+            whole window.
+
+        .. note::
+
+            The image will be saved in png format, you should include the
+            extension in your filename.
+
+        .. versionadded:: 1.9.0
+
+        :Parameters:
+            `filename`: str
+                The filename with which to save the png.
+            `scale`: float
+                The amount by which to scale the saved image, defaults to 1.
+
+                .. versionadded:: 1.11.0
+        '''
+        self.export_as_image(*args, **kwargs).save(filename, flipped=False)
+
+    def export_as_image(self, *args, **kwargs):
+        '''Return an core :class:`~kivy.core.image.Image` of the actual
+        widget.
+
+        .. versionadded:: 1.11.0
+        '''
+        from kivy.core.image import Image
+        scale = kwargs.get('scale', 1)
+
+        if self.parent is not None:
+            canvas_parent_index = self.parent.canvas.indexof(self.canvas)
+            if canvas_parent_index > -1:
+                self.parent.canvas.remove(self.canvas)
+
+        fbo = Fbo(size=(self.width * scale, self.height * scale),
+                  with_stencilbuffer=True)
+
+        with fbo:
+            ClearColor(0, 0, 0, 0)
+            ClearBuffers()
+            Scale(1, -1, 1)
+            Scale(scale, scale, 1)
+            Translate(-self.x, -self.y - self.height, 0)
+
+        fbo.add(self.canvas)
+        fbo.draw()
+        img = Image(fbo.texture)
+        fbo.remove(self.canvas)
+
+        if self.parent is not None and canvas_parent_index > -1:
+            self.parent.canvas.insert(canvas_parent

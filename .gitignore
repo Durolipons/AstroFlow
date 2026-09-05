@@ -1,0 +1,35 @@
+# --- Python ---
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+build/
+dist/
+.Python
+
+# --- Virtual environment ---
+.venv/
+venv/
+env/
+
+# --- IDE / OS ---
+.idea/
+.vscode/
+*.iml
+.DS_Store
+Thumbs.db
+
+# --- Kivy ---
+.kivy/
+logs/
+*.log
+
+# --- pytest ---
+.pytest_cache/
+
+# --- Swiss Ephemeris data files (large binaries, downloaded separately) ---
+# Drop the official sepl_*.se1 / seas_*.se1 files into core/ephe/ for full
+# precision. The engine falls back to the built-in Moshier ephemeris when
+# these files are absent, so this folder is intentionally git-ignored.
+core/ephe/*.se1
+core/ephe/*.seas

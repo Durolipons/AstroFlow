@@ -1,0 +1,610 @@
+#:kivy 2.3.0
+# AstroFlow root layout.
+#
+# Each screen maps to a Python class in ui/screens/. The ids declared here are
+# the same names used by the ObjectProperty fields in those classes, so
+# assigning a widget's id here wires it to the Python attribute automatically.
+
+<AstroClock>:
+    time_label: time_label
+    location_label: location_label
+    location_button: location_button
+    location_status: location_status
+    wheel_host: wheel_host
+    wheel: wheel
+    readout_label: readout_label
+    copy_button: copy_button
+    orientation: "vertical"
+    size_hint: 1, 1
+    padding: 8
+    spacing: 8
+    canvas.before:
+        Color:
+            rgba: 0.08, 0.09, 0.12, 1
+        Rectangle:
+            pos: self.pos
+            size: self.size
+
+    BoxLayout:
+        size_hint_y: None
+        height: 72
+        spacing: 6
+        BoxLayout:
+            orientation: "vertical"
+            spacing: 2
+            Label:
+                id: time_label
+                text: ""
+                text_size: self.width, None
+                halign: "left"
+                valign: "middle"
+            Label:
+                id: location_label
+                text: ""
+                text_size: self.width, None
+                halign: "left"
+                valign: "middle"
+
+        BoxLayout:
+            orientation: "vertical"
+            size_hint_x: 0.42
+            spacing: 4
+            Button:
+                id: location_button
+                text: "Use device location"
+                on_release: root.toggle_device_location()
+            Label:
+                id: location_status
+                text: ""
+                text_size: self.width, None
+                halign: "center"
+                valign: "middle"
+
+    BoxLayout:
+        size_hint_y: None
+        height: 72
+        spacing: 6
+        ScrollView:
+            do_scroll_x: False
+            bar_width: 4
+            TextInput:
+                id: readout_label
+                text: "Tap a planet, sign or aspect on the wheel to read about it."
+                readonly: True
+                multiline: True
+                font_size: "12sp"
+                foreground_color: 0.90, 0.92, 0.95, 1
+                background_color: 0.05, 0.06, 0.08, 1
+                cursor_color: 0.90, 0.92, 0.95, 0.35
+                size_hint_y: None
+                height: max(self.minimum_height, self.parent.height)
+                padding: 6, 4
+        Button:
+            id: copy_button
+            text: "Copy"
+            size_hint_x: None
+            width: 64
+            on_release: root.copy_readout()
+
+    SquareWheelHost:
+        id: wheel_host
+        size_hint: 1, 1
+        ChartWheel:
+            id: wheel
+
+<HomeScreen>:
+    name: "home"
+    city_search: city_search
+    name_input: name_input
+    date_input: date_input
+    time_input: time_input
+    latlon_input: latlon_input
+    tz_input: tz_input
+    house_spinner: house_spinner
+    sidereal_spinner: sidereal_spinner
+    status_label: status_label
+    astro_clock: astro_clock
+    BoxLayout:
+        orientation: "vertical"
+        padding: 16
+        spacing: 10
+
+        Label:
+            text: "AstroFlow — Birth Chart + Astro-Clock"
+            font_size: "24sp"
+            size_hint_y: None
+            height: 40
+
+        BoxLayout:
+            spacing: 12
+
+            ScrollView:
+                size_hint_x: 0.56
+                do_scroll_x: False
+                bar_width: 8
+
+                BoxLayout:
+                    orientation: "vertical"
+                    padding: 4
+                    spacing: 8
+                    size_hint_y: None
+                    height: self.minimum_height
+
+                    GridLayout:
+                        cols: 2
+                        spacing: 6
+                        size_hint_y: None
+                        height: self.minimum_height
+
+                        Label:
+                            text: "Name:"
+                            size_hint_y: None
+                            height: 32
+                        BoxLayout:
+                            spacing: 6
+                            size_hint_y: None
+                            height: 32
+                            TextInput:
+                                id: name_input
+                                text: "Test Native"
+                                multiline: False
+                            Button:
+                                text: "Famous"
+                                size_hint_x: None
+                                width: 90
+                                on_release: root.show_presets()
+
+                        Label:
+                            text: "Date (YYYY-MM-DD):"
+                            size_hint_y: None
+                            height: 32
+                        TextInput:
+                            id: date_input
+                            text: "2000-01-01"
+                            multiline: False
+                            size_hint_y: None
+                            height: 32
+
+                        Label:
+                            text: "Time (HH:MM):"
+                            size_hint_y: None
+                            height: 32
+                        TextInput:
+                            id: time_input
+                            text: "12:00"
+                            multiline: False
+                            size_hint_y: None
+                            height: 32
+
+                        Label:
+                            text: "Timezone (IANA / offset):"
+                            size_hint_y: None
+                            height: 32
+                        TextInput:
+                            id: tz_input
+                            text: "Europe/London"
+                            multiline: False
+                            size_hint_y: None
+                            height: 32
+
+                        Label:
+                            text: "House system:"
+                            size_hint_y: None
+                            height: 32
+                        Spinner:
+                            id: house_spinner
+                            text: "Placidus"
+                            values: ["Placidus", "Koch", "Whole Sign", "Equal (ASC)", "Equal (MC)", "Regiomontanus", "Campanus", "Porphyry"]
+                            size_hint_y: None
+                            height: 32
+
+                        Label:
+                            text: "Sidereal mode:"
+                            size_hint_y: None
+                            height: 32
+                        Spinner:
+                            id: sidereal_spinner
+                            text: "Tropical (default)"
+                            values: ["Tropical (default)", "Fagan/Bradley", "Lahiri", "Raman", "Krishnamurti"]
+                            size_hint_y: None
+                            height: 32
+
+                    Label:
+                        text: "City (search or pick coordinates):"
+                        size_hint_y: None
+                        height: 22
+                        halign: "left"
+                    CitySearch:
+                        id: city_search
+                        on_city_selected: root.on_city_selected(*args)
+
+                    GridLayout:
+                        cols: 2
+                        spacing: 6
+                        size_hint_y: None
+                        height: self.minimum_height
+
+                        Label:
+                            text: "Latitude, Longitude:"
+                            size_hint_y: None
+                            height: 32
+                        TextInput:
+                            id: latlon_input
+                            text: "51.5085, -0.1257"
+                            multiline: False
+                            size_hint_y: None
+                            height: 32
+
+                    BoxLayout:
+                        size_hint_y: None
+                        height: 36
+                        spacing: 10
+                        Button:
+                            text: "Find city from lat/lon"
+                            on_release: root.find_city_from_coords()
+                        CheckBox:
+                            id: online_checkbox
+                            size_hint_x: None
+                            width: 32
+                            active: False
+                            on_active: root.toggle_online(self.active)
+                        Label:
+                            text: "Online search (rare places)"
+                            size_hint_x: None
+                            width: 220
+
+                    BoxLayout:
+                        size_hint_y: None
+                        height: 44
+                        spacing: 8
+                        Button:
+                            text: "Generate Chart"
+                            on_release: root.generate_chart()
+                        Button:
+                            text: "Interpretations"
+                            on_release: root.go_to_interpretations()
+
+                    Label:
+                        id: status_label
+                        text: ""
+                        color: 1, 0.3, 0.3, 1
+                        size_hint_y: None
+                        height: 30
+
+            BoxLayout:
+                size_hint_x: 0.44
+                size_hint_y: 1
+                orientation: "vertical"
+                spacing: 8
+                padding: 4
+
+                Label:
+                    text: "Astro-Clock"
+                    font_size: "18sp"
+                    size_hint_y: None
+                    height: 30
+
+                AstroClock:
+                    id: astro_clock
+                    size_hint: 1, 1
+
+                Label:
+                    text: "The clock shows the current sky and live transit aspects."
+                    size_hint_y: None
+                    height: 42
+                    text_size: self.width, None
+                    halign: "center"
+                    valign: "middle"
+
+
+<ChartScreen>:
+    name: "chart"
+    chart_output: chart_output
+    chart_host: chart_host
+    wheel: wheel
+    BoxLayout:
+        orientation: "vertical"
+        padding: 8
+        spacing: 8
+
+        Label:
+            text: "Natal Chart"
+            font_size: "22sp"
+            size_hint_y: None
+            height: 34
+
+        BoxLayout:
+            spacing: 10
+
+            BoxLayout:
+                orientation: "vertical"
+                size_hint_x: 0.56
+                spacing: 8
+
+                Label:
+                    text: "Tap a planet or aspect line"
+                    size_hint_y: None
+                    height: 24
+
+                SquareWheelHost:
+                    id: chart_host
+                    size_hint: 1, 1
+                    canvas.before:
+                        Color:
+                            rgba: 0.05, 0.06, 0.08, 1
+                        RoundedRectangle:
+                            pos: self.pos
+                            size: self.size
+                            radius: [12]
+                    ChartWheel:
+                        id: wheel
+
+                BoxLayout:
+                    size_hint_y: None
+                    height: 42
+                    spacing: 6
+                    Button:
+                        text: "Full report"
+                        on_release: root.show_full_report()
+                    Button:
+                        text: "Forecast ->"
+                        on_release: root.go_to_forecast()
+
+            BoxLayout:
+                orientation: "vertical"
+                size_hint_x: 0.44
+                spacing: 8
+
+                Label:
+                    text: "Interpretation"
+                    size_hint_y: None
+                    height: 24
+
+                ScrollView:
+                    TextInput:
+                        id: chart_output
+                        readonly: True
+                        font_size: "12sp"
+                        size_hint_y: None
+                        height: max(self.minimum_height, self.parent.height)
+                        text: ""
+
+                BoxLayout:
+                    size_hint_y: None
+                    height: 42
+                    spacing: 6
+                    Button:
+                        text: "Copy"
+                        on_release: root.copy_output()
+                    Button:
+                        text: "Interpretations"
+                        on_release: root.go_to_interpretations()
+                    Button:
+                        text: "Home"
+                        on_release: root.go_home()
+
+
+<ForecastScreen>:
+    name: "forecast"
+    forecast_output: forecast_output
+    summary_label: summary_label
+    target_year: target_year
+    target_month: target_month
+    target_day: target_day
+    BoxLayout:
+        orientation: "vertical"
+        padding: 8
+        spacing: 8
+
+        Label:
+            text: "Forecast"
+            font_size: "22sp"
+            size_hint_y: None
+            height: 34
+
+        BoxLayout:
+            spacing: 10
+
+            BoxLayout:
+                orientation: "vertical"
+                size_hint_x: 0.42
+                spacing: 8
+
+                Label:
+                    text: "Target date"
+                    size_hint_y: None
+                    height: 24
+
+                GridLayout:
+                    cols: 3
+                    spacing: 6
+                    size_hint_y: None
+                    height: self.minimum_height
+
+                    TextInput:
+                        id: target_year
+                        hint_text: "YYYY"
+                        input_filter: "int"
+                        multiline: False
+                    TextInput:
+                        id: target_month
+                        hint_text: "MM"
+                        input_filter: "int"
+                        multiline: False
+                    TextInput:
+                        id: target_day
+                        hint_text: "DD"
+                        input_filter: "int"
+                        multiline: False
+
+                Button:
+                    size_hint_y: None
+                    height: 42
+                    text: "Generate forecast"
+                    on_release: root.generate_forecast()
+
+                BoxLayout:
+                    orientation: "vertical"
+                    padding: 8
+                    spacing: 4
+                    canvas.before:
+                        Color:
+                            rgba: 0.06, 0.07, 0.1, 1
+                        RoundedRectangle:
+                            pos: self.pos
+                            size: self.size
+                            radius: [10]
+                    Label:
+                        text: "Loaded chart"
+                        size_hint_y: None
+                        height: 22
+                    Label:
+                        id: summary_label
+                        text: "No birth chart loaded."
+                        size_hint_y: None
+                        height: 72
+                        text_size: self.width - 16, None
+                        halign: "left"
+                        valign: "top"
+
+            BoxLayout:
+                orientation: "vertical"
+                size_hint_x: 0.58
+                spacing: 8
+
+                Label:
+                    text: "Forecast report"
+                    size_hint_y: None
+                    height: 24
+
+                ScrollView:
+                    canvas.before:
+                        Color:
+                            rgba: 0.05, 0.06, 0.08, 1
+                        RoundedRectangle:
+                            pos: self.pos
+                            size: self.size
+                            radius: [10]
+                    TextInput:
+                        id: forecast_output
+                        readonly: True
+                        font_size: "13sp"
+                        size_hint_y: None
+                        height: max(self.minimum_height, self.parent.height)
+                        text: ""
+
+        BoxLayout:
+            size_hint_y: None
+            height: 42
+            spacing: 8
+            Button:
+                text: "<- Chart"
+                on_release: root.go_to_chart()
+            Button:
+                text: "Interpretations"
+                on_release: root.go_to_interpretations()
+            Button:
+                text: "Home"
+                on_release: root.go_home()
+
+
+<InterpretationEditorScreen>:
+    name: "interpretations"
+    category_spinner: category_spinner
+    entry_spinner: entry_spinner
+    key_input: key_input
+    value_input: value_input
+    status_label: status_label
+    BoxLayout:
+        orientation: "vertical"
+        padding: 16
+        spacing: 10
+
+        Label:
+            text: "Interpretation Library"
+            font_size: "24sp"
+            size_hint_y: None
+            height: 40
+
+        Label:
+            text: "Edit the wording used for signs, aspects, planets and the current-sky readings. Save to keep your own voice."
+            size_hint_y: None
+            height: 42
+            text_size: self.width, None
+            halign: "center"
+            valign: "middle"
+
+        GridLayout:
+            cols: 2
+            spacing: 8
+            size_hint_y: None
+            height: self.minimum_height
+
+            Label:
+                text: "Category:"
+                size_hint_y: None
+                height: 32
+            Spinner:
+                id: category_spinner
+                text: "Sun sign keywords"
+                values: ["Sun sign keywords", "Aspect keywords", "Planet roles", "Sky aspect wording", "Sky planet notes", "Sign sky notes"]
+                size_hint_y: None
+                height: 32
+                on_text: root.select_category(self.text)
+
+            Label:
+                text: "Entry:"
+                size_hint_y: None
+                height: 32
+            Spinner:
+                id: entry_spinner
+                text: "(no entries)"
+                values: []
+                size_hint_y: None
+                height: 32
+                on_text: root.select_entry(self.text)
+
+            Label:
+                text: "Key:"
+                size_hint_y: None
+                height: 32
+            TextInput:
+                id: key_input
+                multiline: False
+                size_hint_y: None
+                height: 32
+
+        Label:
+            text: "Interpretation text:"
+            size_hint_y: None
+            height: 24
+
+        TextInput:
+            id: value_input
+            multiline: True
+            size_hint_y: 1
+            font_size: "14sp"
+
+        BoxLayout:
+            size_hint_y: None
+            height: 44
+            spacing: 8
+            Button:
+                text: "Save"
+                on_release: root.save_entry()
+            Button:
+                text: "Reload"
+                on_release: root.reload_library()
+            Button:
+                text: "Restore defaults"
+                on_release: root.restore_defaults()
+            Button:
+                text: "Home"
+                on_release: root.go_home()
+
+        Label:
+            id: status_label
+            text: ""
+            color: 0.9, 0.4, 0.2, 1
+            size_hint_y: None
+            height: 28
