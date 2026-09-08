@@ -45,7 +45,7 @@ PLANETS: Dict[int, str] = {
 DEFAULT_PLANET_IDS: List[int] = [
     SUN, MOON, MERCURY, VENUS, MARS,
     JUPITER, SATURN, URANUS, NEPTUNE, PLUTO,
-    MEAN_NODE, TRUE_NODE,
+    MEAN_NODE, TRUE_NODE, CHIRON,
 ]
 
 # ---------------------------------------------------------------------------

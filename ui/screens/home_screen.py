@@ -16,14 +16,19 @@ Combined fields (parsed on submit):
 import re
 from datetime import datetime, timezone, timedelta
 
-from kivy.properties import ObjectProperty
+from kivy.properties import NumericProperty, ObjectProperty
 from kivy.uix.screenmanager import Screen
 
 from core import chart as core_chart
 from core.models import BirthData, Location
 from core import constants as C
 from core.geocoder import CompositeLookup, LocalCitiesLookup, NominatimLookup
-from ui.widgets import AstroClock, CitySearch  # noqa: F401 (KV factory)
+from ui.widgets import AstroClock, CitySearch, PanelDivider  # noqa: F401 (KV factory)
+
+# Bounds for the chart-data / Astro-Clock split (see set_chart_split). The
+# fraction is the chart-data column's share of the resizable row width.
+CHART_SPLIT_MIN = 0.25
+CHART_SPLIT_MAX = 0.75
 
 
 class HomeScreen(Screen):
@@ -46,6 +51,10 @@ class HomeScreen(Screen):
     status_label = ObjectProperty(None)
     city_search = ObjectProperty(None)
     astro_clock = ObjectProperty(None)
+    split_row = ObjectProperty(None)
+    chart_divider = ObjectProperty(None)
+    form_scroll = ObjectProperty(None)
+    chart_split = NumericProperty(0.56)
 
     def on_city_selected(self, _widget, city):
         """Callback from the CitySearch widget: fill lat/lon/tz from a city.
@@ -133,6 +142,51 @@ class HomeScreen(Screen):
         """Open the interpretation editor screen."""
         self.manager.current = "interpretations"
 
+    def go_to_sky(self):
+        """Open the astronomy-only sky panel using the current form/profile."""
+        try:
+            birth_data = self._build_birth_data()
+        except ValueError:
+            birth_data = getattr(self.astro_clock, "_profile", None)
+        sky_screen = self.manager.get_screen("sky")
+        if birth_data is not None:
+            sky_screen.set_profile(birth_data)
+        self.manager.current = "sky"
+
+    # -- database -------------------------------------------------------------
+    def go_to_database(self):
+        """Navigate to the Database screen, handing over the current birth data."""
+        try:
+            bd = self._build_birth_data()
+        except ValueError as exc:
+            self._set_status(f"Error: {exc}")
+            return
+        db_screen = self.manager.get_screen("database")
+        db_screen.set_context_birth_data(bd)
+        self.manager.current = "database"
+
+    def apply_birth_data(self, bd):
+        """Fill the Home-screen form fields from a BirthData object."""
+        self.name_input.text = bd.name
+        self.date_input.text = bd.birth_datetime.strftime("%Y-%m-%d")
+        self.time_input.text = bd.birth_datetime.strftime("%H:%M")
+        loc = bd.location
+        self.latlon_input.text = f"{loc.latitude}, {loc.longitude}"
+        self.tz_input.text = bd.timezone_text
+        # House system: reverse-map the code back to the spinner label.
+        from core import constants as C
+        _reverse = {v: k for k, v in C.HOUSE_SYSTEMS.items()}
+        if self.house_spinner:
+            self.house_spinner.text = _reverse.get(bd.house_system, "Placidus")
+        # Sidereal mode: "Tropical (default)" when None, otherwise the label itself.
+        if self.sidereal_spinner:
+            if bd.sidereal_mode:
+                self.sidereal_spinner.text = bd.sidereal_mode
+            else:
+                self.sidereal_spinner.text = "Tropical (default)"
+        self._set_status(f"Loaded: {bd.name}")
+        self._sync_astro_clock_profile(bd)
+
     def generate_chart(self):
         """Validate the form, build a BirthData, compute the natal chart."""
         try:
@@ -153,6 +207,28 @@ class HomeScreen(Screen):
 
     def on_kv_post(self, base_widget):
         self._sync_astro_clock_profile()
+
+    # -- panel split (chart data vs Astro-Clock) -------------------------------
+    def set_chart_split(self, fraction: float) -> None:
+        """Set the chart-data column's share of the resizable row width.
+
+        Clamped to ``CHART_SPLIT_MIN``..``CHART_SPLIT_MAX`` so neither the
+        form nor the Astro-Clock can collapse.
+        """
+        self.chart_split = min(CHART_SPLIT_MAX, max(CHART_SPLIT_MIN, fraction))
+
+    def adjust_split(self, delta_px: float) -> None:
+        """Divider callback: shift the split by ``delta_px`` pixels."""
+        row = self.split_row
+        if row is None or row.width <= 0:
+            return
+        flexible = row.width - row.padding[0] - row.padding[2]
+        flexible -= row.spacing * max(0, len(row.children) - 1)
+        if self.chart_divider is not None:
+            flexible -= self.chart_divider.width
+        if flexible <= 0:
+            return
+        self.set_chart_split(self.chart_split + delta_px / flexible)
 
     # -- parsing helpers ----------------------------------------------------
     def _parse_latlon(self):

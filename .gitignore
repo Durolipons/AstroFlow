@@ -33,3 +33,6 @@ logs/
 # these files are absent, so this folder is intentionally git-ignored.
 core/ephe/*.se1
 core/ephe/*.seas
+# ...except the bundled Chiron data file, which ships with the app so Chiron
+# works fully offline (see core/ephemeris.py auto-discovery). Keep tracked.
+!core/ephe/seas_18.se1

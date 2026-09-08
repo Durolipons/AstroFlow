@@ -29,6 +29,17 @@ from .models import House, PlanetPosition
 _EPHEMERIS_FILE_SUFFIXES = (".se1", ".seas")
 
 
+def _bundled_ephe_path() -> Optional[str]:
+    """Return the repo-bundled ``core/ephe`` directory, if it exists.
+
+    AstroFlow ships the Swiss Ephemeris data files needed for Chiron (and
+    any other bodies the user drops in) right inside ``core/ephe/``.  The
+    wrapper auto-discovers this directory so charts work out-of-the-box.
+    """
+    path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "ephe")
+    return path if os.path.isdir(path) else None
+
+
 class Ephemeris:
     """Thin, stateful wrapper around the Swiss Ephemeris C API."""
 
@@ -40,6 +51,13 @@ class Ephemeris:
         self.ephe_path: Optional[str] = None
         self._sidereal_mode: Optional[str] = None
         self._topo_cache: Optional[Tuple[float, float, float]] = None
+        self.last_missing: List[str] = []
+        # Auto-discover the bundled ``core/ephe/`` data directory so optional
+        # Swiss files (e.g. ``seas_18.se1`` for Chiron) are picked up
+        # without any configuration. No-ops safely when the dir is absent.
+ 
+        if ephe_path is None:
+            ephe_path = _bundled_ephe_path()
         if ephe_path:
             self.set_ephe_path(ephe_path)
         if sidereal_mode:
@@ -94,6 +112,17 @@ class Ephemeris:
     def version(self) -> str:
         """Return the Swiss Ephemeris library version string."""
         return swe.version
+
+    def supports_chiron(self) -> bool:
+        """True if the Swiss Ephemeris data file for Chiron is available.
+
+
+        Chiron (asteroid 2060) needs the ``seas_18.se1`` data file; the
+        built-in Moshier fallback does not cover asteroids, so without the file
+        Chiron positions cannot be computed."""
+        if self.ephe_path is None:
+            return False
+        return os.path.isfile(os.path.join(self.ephe_path, "seas_18.se1"))
 
     # -- time --------------------------------------------------------------
     @staticmethod
@@ -175,15 +204,29 @@ class Ephemeris:
         speed: bool = True,
         include_chiron: bool = False,
     ) -> List[PlanetPosition]:
-        """Compute several bodies for the same moment."""
+        """Compute several bodies for the same moment.
+
+
+        Bodies whose ephemeris data file is unavailable (e.g. Chiron
+        without the bundled ``seas_18.se1``) are skipped and their names
+        recorded in ``self.last_missing`` so callers can surface a note."""
         ids = list(planet_ids) if planet_ids else list(C.DEFAULT_PLANET_IDS)
         if include_chiron and C.CHIRON not in ids:
             ids.append(C.CHIRON)
-        return [
-            self.planet_position(jd_ut, pid, sidereal=sidereal,
-                                 topocentric=topocentric, speed=speed)
-            for pid in ids
-        ]
+
+        self.last_missing = []
+        positions: List[PlanetPosition] = []
+        for pid in ids:
+            try:
+                positions.append(self.planet_position(
+                    jd_ut, pid, sidereal=sidereal,
+                    topocentric=topocentric, speed=speed,
+                ))
+            except swe.Error:
+                # Optional asteroid files (``seas_*.se1``) are absent for this
+                # body: skip it and record the name for the caller's note.
+                self.last_missing.append(C.PLANETS.get(pid, f"Body#{pid}"))
+        return positions
 
     # -- houses & angles ---------------------------------------------------
     def houses(

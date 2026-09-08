@@ -53,16 +53,15 @@ def test_birth_interpretation_uses_custom_sign_text(isolated_library):
 def test_new_groups_have_defaults():
     """All new combination/forecast groups ship with non-empty defaults."""
     lib = default_interpretation_library()
-    assert len(lib.planet_sign) == 120  # 10 planets × 12 signs
-    assert len(lib.planet_house) == 120  # 10 planets × 12 houses
-    assert len(lib.sun_moon) == 144  # 12 × 12
-    assert len(lib.aspect_pair) == 405  # 45 pairs × 9 types
-    assert len(lib.angle_sign) == 24  # 2 angles × 12 signs
-    assert len(lib.planet_sign_retro) == 10  # 10 planets
-    assert len(lib.forecast_ingress) == 120  # 10 planets × 12 signs
-    assert len(lib.forecast_station) == 20  # 10 planets × 2
-    assert len(lib.forecast_phase) == 8  # 8 lunation phases
-
+    assert len(lib.planet_sign) == 132
+    assert len(lib.planet_house) == 132
+    assert len(lib.sun_moon) == 144
+    assert len(lib.aspect_pair) == 495
+    assert len(lib.angle_sign) == 24
+    assert len(lib.planet_sign_retro) == 11
+    assert len(lib.forecast_ingress) == 132
+    assert len(lib.forecast_station) == 22
+    assert len(lib.forecast_phase) == 8
 
 def test_new_groups_round_trip(isolated_library):
     """Edited values in new groups persist through save/load."""

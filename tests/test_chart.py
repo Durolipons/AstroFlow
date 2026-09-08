@@ -37,8 +37,8 @@ def test_calculate_birth_chart_returns_natal_chart():
 
     assert chart.chart_type == "Natal"
     assert chart.birth_data is bd
-    # DEFAULT_PLANET_IDS has 12 entries (Sun..True Node).
-    assert len(chart.positions) == 12
+    # DEFAULT_PLANET_IDS has 13 entries (Sun..Chiron).
+    assert len(chart.positions) == 13
     assert len(chart.houses) == 12
 
 

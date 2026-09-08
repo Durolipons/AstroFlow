@@ -61,7 +61,7 @@ def secondary_progressions(
     _assign_houses(positions, [h.longitude for h in houses])
     aspects = A.find_aspects_between(positions)
 
-    return Chart(
+    chart = Chart(
         chart_type="Secondary Progression",
         birth_data=birth_data,
         target_title=f"Progressed for {target_date_ut:%Y-%m-%d}",
@@ -72,6 +72,11 @@ def secondary_progressions(
         sidereal=sidereal,
         ayanamsa=ep.ayanamsa(pjd) if sidereal else 0.0,
     )
+    for missing_name in ep.last_missing:
+        chart.notes.append(
+            f"Ephemeris data unavailable for {missing_name}; position omitted."
+        )
+    return chart
 
 
 def _natal_chart(

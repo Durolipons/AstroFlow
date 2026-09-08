@@ -1,0 +1,12 @@
+NASA WISE full-sky panorama source
+
+Bundled file:
+- wise_full_sky_pia15482_1024.jpg
+
+Source:
+- https://science.nasa.gov/photojournal/mapping-the-infrared-universe-the-entire-wise-sky-rectangular-format/
+
+Notes:
+- NASA/JPL WISE full-sky equirectangular image.
+- Downloaded as a lightweight resized local copy for the astronomy sky panel.
+- Used only by the separate astronomy renderer layer; astrology modules remain unchanged.

@@ -9,7 +9,12 @@ Coordinates are city-centre values; timezones are IANA names (the bundled
 ``tzdata`` resolves the correct historical UTC offset for old birth dates).
 """
 
+import re
 from dataclasses import dataclass
+from datetime import datetime
+
+from core.chart_store import save_chart, load_saved_charts
+from core.models import BirthData, Location, parse_timezone
 
 
 @dataclass(frozen=True)
@@ -27,6 +32,23 @@ class Preset:
     def row_text(self) -> str:
         """Text shown in the preset-selection list."""
         return f"{self.name} — {self.place} ({self.date} {self.time})"
+
+    @property
+    def birth_data(self) -> BirthData:
+        """Build a ``BirthData`` from this preset's fields."""
+        parts = [p for p in re.split(r"[,\s]+", self.latlon.strip()) if p]
+        lat, lon = float(parts[0]), float(parts[1])
+        tz = parse_timezone(self.timezone)
+        dt = datetime.strptime(
+            f"{self.date} {self.time}", "%Y-%m-%d %H:%M"
+        ).replace(tzinfo=tz)
+        return BirthData(
+            name=self.name,
+            birth_datetime=dt,
+            location=Location(latitude=lat, longitude=lon, name=self.place),
+            house_system="P",
+            sidereal_mode=None,
+        )
 
 
 PRESETS = [
@@ -74,3 +96,17 @@ def get_preset(name: str):
         if p.name.lower() == name.lower():
             return p
     return None
+
+
+def seed_example_charts() -> int:
+    """Populate the chart store with the famous-person presets (idempotent).
+
+    Only seeds when the store is empty, so a user who has added their own
+    charts will not have the examples injected. Returns the number of charts
+    that were added (0 if the store was already non-empty).
+    """
+    if load_saved_charts():
+        return 0
+    for preset in PRESETS:
+        save_chart(preset.birth_data)
+    return len(PRESETS)

@@ -62,6 +62,10 @@ At the bottom of the birth-data form you will find two dropdowns:
 You can also start from an **example preset** (well-known charts with verified
 birth data) if you just want to explore.
 
+> **Tip — resizable columns.** Drag the vertical divider between the
+> birth-data form and the Astro-Clock to give either side more room (the
+> cursor shows a left/right arrow on hover).
+
 > **Tip — the Astro-Clock follows this location.** The current-sky wheel on
 > the right uses the same place (or your device location, where available),
 > so set the location first and the Astro-Clock immediately shows the sky
@@ -78,6 +82,10 @@ The Astro-Clock panel shows:
 * a **live chart wheel of the sky right now** — the planets where they are
   at this moment, the zodiac ring around them, the houses as they fall at
   this place and time, and the aspect lines between moving planets.
+* **A resizable split** — drag the thin divider between the readout and the
+  wheel to give either panel more room (the mouse cursor shows a move icon
+  on hover). The **A− / A+** buttons beside **Copy** shrink or enlarge the
+  readout text.
 
 This is a *transit* wheel, not a birth chart: it answers "what is the sky
 doing today, here?". The readings it gives are written accordingly — they
@@ -203,7 +211,7 @@ complete consultation write-up is a couple of keystrokes away.
 | --- | --- |
 | Your edited interpretation wording | `interpretations.json` inside your AstroFlow user folder (shown on the Interpretations screen; per OS user) |
 | City database | bundled with the app (`core/data/cities.json`) |
-| Ephemeris data | built into the app; optional Swiss files in `core/ephe/` |
+| Ephemeris data | built into the app; Chiron's file (`seas_18.se1`) is bundled in `core/ephe/`, so all 13 chart bodies work offline |
 
 Back up (or share with another machine) simply by copying
 `interpretations.json`.
@@ -217,6 +225,7 @@ Back up (or share with another machine) simply by copying
 | **Planets/zodiac show letters instead of glyphs** (e.g. "Su", "Ar") | A font with the astrological Unicode block was not found. On Windows, Segoe UI Symbol provides it; ensure system fonts are installed. |
 | **Chart looks wrong for a famous person** | Check the birth time is *local clock time* and the location's timezone came from the city database. Presets are pre-verified if in doubt. |
 | **City not found** | Type coordinates directly, or enable "Online search (rare places)". |
+| **Chiron missing from a chart** | Chiron needs its data file (`seas_18.se1`), which AstroFlow bundles in `core/ephe/`. Keep that folder in place when moving the app; if the file is absent, Chiron is skipped and the chart notes which bodies could not be computed. |
 | **Timezone looks suspicious after online search** | Online geocoding estimates the timezone from the nearest bundled city — verify manually for critical charts. |
 | **My wording disappeared** | Someone pressed Restore defaults. Re-open `interpretations.json` from your backup (or re-type); defaults can always be re-edited. |
 | **The wheel is too small** | Enlarge the window; the wheel scales to the square of its panel. |

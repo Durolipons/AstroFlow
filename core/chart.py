@@ -95,4 +95,8 @@ def calculate_birth_chart(
     chart.notes.append(
         "Swiss Ephemeris + Moshier fallback unless .se1 files are provided."
     )
+    for missing_name in ep.last_missing:
+        chart.notes.append(
+            f"Ephemeris data unavailable for {missing_name}; position omitted."
+        )
     return chart

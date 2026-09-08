@@ -34,7 +34,7 @@ def _make_target(year: int = 2025, month: int = 6, day: int = 15) -> datetime:
 
 def test_transit_positions_returns_planets():
     positions = transit_positions(_make_target())
-    assert len(positions) == 12  # DEFAULT_PLANET_IDS
+    assert len(positions) == 13  # DEFAULT_PLANET_IDS
     for p in positions:
         assert 0 <= p.longitude < 360
 
@@ -43,7 +43,7 @@ def test_transit_chart_is_well_formed():
     bd = _make_birth()
     chart = transit_chart(bd, _make_target())
     assert chart.chart_type == "Transits"
-    assert len(chart.positions) == 12
+    assert len(chart.positions) == 13
     assert len(chart.houses) == 12
     for name in ("Ascendant", "MC", "Descendant", "IC"):
         assert name in chart.angles

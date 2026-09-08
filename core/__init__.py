@@ -1,12 +1,13 @@
 """AstroFlow core engine.
 
 This package is the UI-agnostic astrology engine. It contains *no* Kivy
-imports -- every module here can be imported, tested, and reused from plain
+import -- every module here can be imported, tested, and reused from plain
 Python, a CLI, a web service, or any future UI.
 
 Public entry points for consumers:
     core.ephemeris      -- Swiss Ephemeris wrapper (only module importing swisseph)
     core.chart          -- birth chart calculation
+    core.chart_store    -- JSON-backed saved-birth-chart database
     core.progressions   -- secondary progressions + solar arc directions
     core.transits       -- transit positions + aspects to the natal chart
     core.aspects        -- generic aspect detection
@@ -17,6 +18,7 @@ Public entry points for consumers:
 from . import (
     aspects,
     chart,
+    chart_store,
     constants,
     ephemeris,
     interpretation,
@@ -30,6 +32,7 @@ from . import (
 __all__ = [
     "aspects",
     "chart",
+    "chart_store",
     "constants",
     "ephemeris",
     "interpretation",

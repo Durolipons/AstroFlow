@@ -30,6 +30,7 @@ class ForecastScreen(Screen):
 
     def __init__(self, **kwargs):
         self._birth_data: BirthData = None
+        self._font_size: float = 13.0
         super().__init__(**kwargs)
 
     def on_kv_post(self, base_widget):
@@ -85,6 +86,12 @@ class ForecastScreen(Screen):
         self._set_output(report)
 
     # -- rendering ----------------------------------------------------------
+    def scale_font(self, delta: float):
+        """Grow/shrink the forecast report text, clamped to 8..32sp."""
+        self._font_size = min(32.0, max(8.0, self._font_size + delta))
+        if self.forecast_output is not None:
+            self.forecast_output.font_size = f"{self._font_size}sp"
+
     def _set_output(self, text: str) -> None:
         if self.forecast_output:
             self.forecast_output.text = text

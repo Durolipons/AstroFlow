@@ -54,7 +54,7 @@ def transit_chart(
     )
     _assign_houses(positions, [h.longitude for h in houses])
 
-    return Chart(
+    chart = Chart(
         chart_type="Transits",
         birth_data=birth_data,
         target_title=f"Transits for {target_date_ut:%Y-%m-%d}",
@@ -65,6 +65,11 @@ def transit_chart(
         sidereal=sidereal,
         ayanamsa=ep.ayanamsa(jd_ut) if sidereal else 0.0,
     )
+    for missing_name in ep.last_missing:
+        chart.notes.append(
+            f"Ephemeris data unavailable for {missing_name}; position omitted."
+        )
+    return chart
 
 
 def transits_to_natal(

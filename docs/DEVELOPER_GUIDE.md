@@ -41,8 +41,8 @@ the hard-won Kivy pitfalls to avoid.
 
 | Module | Responsibility |
 | --- | --- |
-| `ephemeris.py` | pyswisseph wrapper: JD conversion, planet longitudes, houses, sidereal modes; falls back to the Moshier ephemeris when no `.se1` files are present |
-| `constants.py` | Planet IDs/names, `SIGNS`, `ELEMENTS`, `MODALITIES`, aspect definitions + orbs, house systems, ayanamsas |
+| `ephemeris.py` | pyswisseph wrapper: JD conversion, planet longitudes, houses, sidereal modes; auto-discovers the bundled `core/ephe/` data (`seas_18.se1` for Chiron), falls back to the Moshier ephemeris when files are absent; `planet_positions()` skips bodies with missing data and reports them via `last_missing` |
+| `constants.py` | Planet IDs/names (13 default bodies: Sun–Pluto, Mean/True Node, Chiron), `SIGNS`, `ELEMENTS`, `MODALITIES`, aspect definitions + orbs, house systems, ayanamsas |
 | `models.py` | Dataclasses: `Location`, `BirthData`, `PlanetPosition`, `HouseCusp`, `Aspect`, `Chart`, `TransitForecast`, `SolarArcResult` |
 | `chart.py` | `calculate_birth_chart()`: planets → houses → angles → aspects |
 | `aspects.py` | Generic angular-separation aspect detection with per-aspect orbs |
@@ -50,6 +50,7 @@ the hard-won Kivy pitfalls to avoid.
 | `transits.py` | `transit_chart()` (sky now) and transit-to-natal aspects |
 | `interpretation.py` | All report/read text: `chart_report`, `full_birth_report`, `planet_detail_text`, `aspect_detail_text`, `sign_detail_text`, and the `sky_*` family for the Astro-Clock |
 | `interpretation_store.py` | `InterpretationLibrary` dataclass + JSON load/save/caching (see §4) |
+| `chart_store.py` | Saved-birth-chart store: JSON list of `SavedChart` records (id, name, created, serialized `BirthData`) in `charts.json`, with `save_chart` / `load_saved_charts` / `delete_chart` / `find_chart` (see §8.1) |
 | `cities.py` / `geocoder.py` | Bundled city DB search + nearest lookup; optional Nominatim composite |
 
 ### UI (`ui/`)
@@ -59,11 +60,12 @@ the hard-won Kivy pitfalls to avoid.
 | `main.py` | `AstroFlowApp`: builds the `ScreenManager`, configures the library path to the Kivy user dir, fixes window sizing after startup |
 | `app.kv` | All layout; ids map 1:1 to `ObjectProperty` fields on the screens |
 | `widgets/chart_wheel.py` | The interactive wheel (see §5) |
-| `widgets/astro_clock.py` | `AstroClock` panel: 1-second clock, location handling, refresh loop, sky readings on tap |
+| `widgets/astro_clock.py` | `AstroClock` panel: 1-second clock, location handling, refresh loop, sky readings on tap, drag divider between readout and wheel, A−/A+ readout font |
 | `widgets/city_search.py` | Debounced search dropdown over the city DB |
-| `screens/home_screen.py` | Birth-data form, presets, city search, online geocode toggle |
-| `screens/chart_screen.py` | Natal wheel + report panel; wheel-tap → natal text |
-| `screens/forecast_screen.py` | Target-date forecast generation |
+| `screens/home_screen.py` | Birth-data form, presets, city search, online geocode toggle, "Database" button → `go_to_database()`, `apply_birth_data()` to restore a saved chart into the form, drag divider between chart data and Astro-Clock (`chart_split`) |
+| `screens/chart_screen.py` | Natal wheel + report panel; wheel-tap → natal text; Save / Database buttons + A−/A+ font scaling |
+| `screens/database_screen.py` | Saved-chart browser: list, Load (→ Home form), Delete, Save current chart, seed examples |
+| `screens/forecast_screen.py` | Target-date forecast generation; A−/A+ font scaling |
 | `screens/interpretation_editor.py` | The six-group library editor |
 
 ## 3. Engine internals (core/)
@@ -215,6 +217,74 @@ Pitfalls that cost real debugging time — the code comments reference these:
 9. **`stop_touch_app` doesn't exist; it's `stopTouchApp`** — silent import
    errors in probes cost time; prefer small assertions over probe scripts.
 
+### The sky panel renderer (single-path, GLES2-safe)
+
+The live sky panel renders exclusively through Kivy's canvas
+(`SkyViewportWidget` -> `InstructionGroup`). The separate immediate-mode
+OpenGL renderer (`astronomy/opengl/renderer.py`) is kept only for reference
+and is never enabled: legacy `glBegin`/`glEnd` APIs are unavailable in
+OpenGL ES 2.0, so they cannot run on Huawei/Android phones. `PyOpenGL` is
+therefore not a runtime dependency of the sky panel; its symbols are imported
+lazily inside `SkyRenderer.draw()` and only if that method is explicitly
+called.
+
+Projection tiers (see `astronomy/scene.py` `_project_equatorial_to_dome`):
+
+1. Astropy `AltAz` (desktop, most accurate).
+2. Pure-Python alt/az (`astronomy/skyframes.py`) - identical planetarium
+   behaviour when Astropy is absent (lightweight phones).
+3. Celestial-chart fallback via `project_radec` when there is no observer
+   location/time at all (headless previews).
+
+All three tiers honour the camera (`pan_by`/`zoom_by`/`rotate_by` update both
+the alt/az view and the chart-mode centre), so pan and zoom always respond.
+
+Performance model (keep this shape when touching `scene.py`): the expensive
+observer-frame conversion (astropy `ICRS -> AltAz`) is done **once per unique
+sky position per observer frame** by `_DomeProjector`, which batches every
+requested position into a single vectorised astropy transform per rebuild and
+shares the results in a small per-frame cache (`_FRAME_ALTAZ_CACHES`,
+`_FRAME_ECLIPTIC_CACHES`). Camera navigation must therefore only re-run the
+cheap `project_altaz` screen maths (~5-10 ms per rebuild at the panel
+geometry). Do not reintroduce per-point `SkyCoord(...).transform_to(...)`
+calls inside the per-rebuild builders - that made dragging cost whole seconds.
+`build_sky_scene` queues stars, constellation labels, planets, the equator
+samples, the zodiac ecliptic grid and planet-trail vectors up-front and calls
+`projector.flush()` once before any projection happens.
+
+Navigation feel: `SkyViewportWidget.on_touch_move` implements "grab the sky"
+(the sky follows the finger, so the look direction moves opposite to the
+drag) with the drag speed matched to the displayed field of view, and
+overlay glyph sizes (labels, planet sprites, star radii) scale with the
+widget height via `_glyph_scale()` so the panel does not look zoomed-in on
+short-wide layouts.
+
+Scene scale: `SkyCamera.fov_degrees` (the *vertical* field of view) defaults
+to 60 degrees. Earlier defaults of 100+ degrees produced an ultrawide view
+that made the dome feel like a small close sphere ("telescope backwards"):
+edge stretch plus everything crowding together. At 60 degrees objects space
+out naturally; the zoom controls sweep the clamped 35-150 degree range.
+
+The Milky Way dome is an *angular-space* mesh (`_milky_way_mesh`): a 36x20
+grid sampled over the current view cone in degrees, with vertex positions
+computed by the same rectilinear maths as `project_altaz`. That means the
+texture tracks the stars exactly (no background parallax slip while
+dragging), zooming in raises the dome's effective sampling density, and UVs
+come from the pure-Python galactic mapping - no astropy on the per-frame
+path. The mesh is cached per exact camera key.
+
+The Milky Way texture is an equirectangular *galactic* map. Alignment is
+configurable through `SkySceneConfig`:
+`ASTROFLOW_MILKY_WAY_LONGITUDE_CENTER` (u fraction of the galactic centre,
+default 0.5), `ASTROFLOW_MILKY_WAY_REVERSE_LONGITUDE`, and
+`ASTROFLOW_MILKY_WAY_FLIP_V`. `default_milky_way_texture_path()` prefers
+`wise_full_sky_pia15482_4096.jpg` / `_2048.jpg` in `astronomy/data` when
+present, falling back to the bundled 1024 asset - drop a higher-resolution
+export of the same PIA15482 panorama there to sharpen the dome with no code
+changes (same image, same alignment).
+
+---
+
 ## 7. Testing
 
 ```bash
@@ -245,7 +315,37 @@ pytest tests/test_wheel.py -v     # one area
   `test_chart_screen_layout.py`) assert the ids resolve after `build()`.
 * **Deeper city data:** replace `core/data/cities.json` with a larger
   GeoNames extract; the loader is column-mapping based.
-* **Full Swiss precision:** drop `.se1` files into `core/ephe/`.
+* **Full Swiss precision:** drop `.se1` files into `core/ephe/`. The Chiron
+  file `seas_18.se1` is already bundled there and auto-discovered; Swiss
+  Ephemeris data files are AGPL-licensed (see README).
+
+### 8.1 The chart database
+
+* **Storage:** UI-agnostic `core.chart_store` writes a JSON list of
+  `SavedChart` records to `charts.json` (Kivy `user_data_dir`, re-pointable via
+  `configure_chart_store`). Only `BirthData` is persisted — `BirthData.to_dict`
+  stores the local wall-clock time plus the IANA/offset timezone separately, and
+  natal charts are recomputed deterministically on load.
+* **Save:** the Home "Database" button builds the current form into a
+  `BirthData` and hands it to `DatabaseScreen.set_context_birth_data()`; the
+  Natal Chart page has a one-tap **Save** button; the Database panel's
+  "Save current chart" (optional name field) saves whatever context it holds.
+  Saving a name that already exists overwrites that record (dedup by name).
+* **Load:** the **Load** button calls `HomeScreen.apply_birth_data()`, which
+  fills the form (name/date/time/lat-lon/tz/house/sidereal) for review or
+  regeneration, then returns to Home.
+* **Examples:** the first-run seed is manual — "Load example charts" in the
+  empty state calls `ui/presets.seed_example_charts()` (idempotent; seeds the
+  five famous presets only when the store is empty).
+* **Font scaling:** Chart and Forecast screens expose **A−/A+** buttons wired
+  to `scale_font(delta)`, clamped 8..32sp, applied to `chart_output` /
+  `forecast_output`. The Astro-Clock readout has the same A−/A+ pair
+  (`AstroClock.scale_font`), plus a draggable divider (`PanelDivider`) that
+  resizes the readout/wheel split on mouse drag (hover shows an up-down
+  resize cursor); the readout height is clamped so the wheel never drops
+  below a usable size. The Home screen uses the same divider widget with
+  `orientation: "vertical"` between the chart-data column and the Astro-Clock
+  (`HomeScreen.chart_split`, clamped 0.25..0.75).
 
 See [README.md](README.md) for setup, running and platform notes, and the
 [Astrologer's Manual](ASTROLOGER_MANUAL.md) for the user-facing behaviour the

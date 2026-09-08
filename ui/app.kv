@@ -10,9 +10,15 @@
     location_label: location_label
     location_button: location_button
     location_status: location_status
+    source_button: source_button
+    source_status: source_status
     wheel_host: wheel_host
     wheel: wheel
+    readout_row: readout_row
     readout_label: readout_label
+    split_divider: split_divider
+    font_down_button: font_down_button
+    font_up_button: font_up_button
     copy_button: copy_button
     orientation: "vertical"
     size_hint: 1, 1
@@ -27,7 +33,7 @@
 
     BoxLayout:
         size_hint_y: None
-        height: 72
+        height: 112
         spacing: 6
         BoxLayout:
             orientation: "vertical"
@@ -59,10 +65,21 @@
                 text_size: self.width, None
                 halign: "center"
                 valign: "middle"
+            Button:
+                id: source_button
+                text: "Ephemeris: Swiss"
+                on_release: root.cycle_data_source()
+            Label:
+                id: source_status
+                text: "Using Swiss Ephemeris."
+                text_size: self.width, None
+                halign: "center"
+                valign: "middle"
 
     BoxLayout:
+        id: readout_row
         size_hint_y: None
-        height: 72
+        height: root.readout_height
         spacing: 6
         ScrollView:
             do_scroll_x: False
@@ -82,9 +99,30 @@
         Button:
             id: copy_button
             text: "Copy"
-            size_hint_x: None
-            width: 64
+            size_hint: None, None
+            size: 64, 44
+            pos_hint: {"center_y": 0.5}
             on_release: root.copy_readout()
+        Button:
+            id: font_down_button
+            text: "A-"
+            size_hint: None, None
+            size: 44, 44
+            pos_hint: {"center_y": 0.5}
+            on_release: root.scale_font(-1)
+        Button:
+            id: font_up_button
+            text: "A+"
+            size_hint: None, None
+            size: 44, 44
+            pos_hint: {"center_y": 0.5}
+            on_release: root.scale_font(1)
+
+    PanelDivider:
+        id: split_divider
+        owner: root
+        size_hint_y: None
+        height: 12
 
     SquareWheelHost:
         id: wheel_host
@@ -104,6 +142,9 @@
     sidereal_spinner: sidereal_spinner
     status_label: status_label
     astro_clock: astro_clock
+    split_row: split_row
+    chart_divider: chart_divider
+    form_scroll: form_scroll
     BoxLayout:
         orientation: "vertical"
         padding: 16
@@ -116,10 +157,12 @@
             height: 40
 
         BoxLayout:
+            id: split_row
             spacing: 12
 
             ScrollView:
-                size_hint_x: 0.56
+                id: form_scroll
+                size_hint_x: root.chart_split
                 do_scroll_x: False
                 bar_width: 8
 
@@ -149,10 +192,10 @@
                                 text: "Test Native"
                                 multiline: False
                             Button:
-                                text: "Famous"
+                                text: "Database"
                                 size_hint_x: None
                                 width: 90
-                                on_release: root.show_presets()
+                                on_release: root.go_to_database()
 
                         Label:
                             text: "Date (YYYY-MM-DD):"
@@ -261,6 +304,9 @@
                             text: "Generate Chart"
                             on_release: root.generate_chart()
                         Button:
+                            text: "Sky Panel"
+                            on_release: root.go_to_sky()
+                        Button:
                             text: "Interpretations"
                             on_release: root.go_to_interpretations()
 
@@ -271,8 +317,15 @@
                         size_hint_y: None
                         height: 30
 
+            PanelDivider:
+                id: chart_divider
+                orientation: "vertical"
+                owner: root
+                size_hint_x: None
+                width: 12
+
             BoxLayout:
-                size_hint_x: 0.44
+                size_hint_x: 1 - root.chart_split
                 size_hint_y: 1
                 orientation: "vertical"
                 spacing: 8
@@ -297,11 +350,141 @@
                     valign: "middle"
 
 
+<SkyPanel>:
+    viewport: viewport
+    orientation: "vertical"
+    spacing: 8
+    padding: 4
+    canvas.before:
+        Color:
+            rgba: 0.04, 0.05, 0.08, 1
+        RoundedRectangle:
+            pos: self.pos
+            size: self.size
+            radius: [12]
+    SkyViewportWidget:
+        id: viewport
+        size_hint: 1, 1
+
+
+<SkyScreen>:
+    name: "sky"
+    sky_panel: sky_panel
+    backend_button: backend_button
+    play_button: play_button
+    status_label: status_label
+    time_label: time_label
+    kernel_label: kernel_label
+    scene_label: scene_label
+    BoxLayout:
+        orientation: "vertical"
+        padding: 8
+        spacing: 8
+
+        Label:
+            text: "Astronomy Sky Panel"
+            font_size: "22sp"
+            size_hint_y: None
+            height: 34
+
+        BoxLayout:
+            size_hint_y: None
+            height: 44
+            spacing: 8
+            Button:
+                id: backend_button
+                text: "Backend: JPL Horizons"
+                on_release: root.cycle_backend()
+            Button:
+                text: "Refresh"
+                size_hint_x: None
+                width: 96
+                on_release: root.refresh_snapshot()
+            Button:
+                id: play_button
+                text: "Play"
+                size_hint_x: None
+                width: 96
+                on_release: root.toggle_animation()
+            Button:
+                text: "<<"
+                size_hint_x: None
+                width: 60
+                on_release: root.slower_animation()
+            Button:
+                text: ">>"
+                size_hint_x: None
+                width: 60
+                on_release: root.faster_animation()
+            Button:
+                text: "Now"
+                size_hint_x: None
+                width: 80
+                on_release: root.jump_to_now()
+            Button:
+                text: "Home"
+                size_hint_x: None
+                width: 96
+                on_release: root.go_home()
+
+        BoxLayout:
+            size_hint_y: None
+            height: 74
+            spacing: 8
+            BoxLayout:
+                orientation: "vertical"
+                Label:
+                    id: time_label
+                    text: ""
+                    text_size: self.width, None
+                    halign: "left"
+                    valign: "middle"
+                Label:
+                    id: kernel_label
+                    text: "Kernel: not checked yet."
+                    text_size: self.width, None
+                    halign: "left"
+                    valign: "middle"
+            BoxLayout:
+                orientation: "vertical"
+                Label:
+                    id: status_label
+                    text: "Sky scene idle."
+                    text_size: self.width, None
+                    halign: "right"
+                    valign: "middle"
+                Label:
+                    id: scene_label
+                    text: ""
+                    text_size: self.width, None
+                    halign: "right"
+                    valign: "middle"
+
+        BoxLayout:
+            size_hint_y: None
+            height: 40
+            spacing: 8
+            Button:
+                text: "Reset view"
+                on_release: root.reset_view()
+            Button:
+                text: "View"
+                on_release: root.show_view_menu()
+
+
+
+
+        SkyPanel:
+            id: sky_panel
+            size_hint: 1, 1
+
+
 <ChartScreen>:
     name: "chart"
     chart_output: chart_output
     chart_host: chart_host
     wheel: wheel
+    chart_status: chart_status
     BoxLayout:
         orientation: "vertical"
         padding: 8
@@ -368,14 +551,38 @@
                         size_hint_y: None
                         height: max(self.minimum_height, self.parent.height)
                         text: ""
+                Label:
+                    id: chart_status
+                    text: ""
+                    color: 0.9, 0.7, 0.3, 1
+                    size_hint_y: None
+                    height: 22
+
+
 
                 BoxLayout:
                     size_hint_y: None
                     height: 42
                     spacing: 6
                     Button:
+                        text: "Save"
+                        on_release: root.save_current_chart()
+                    Button:
+                        text: "Database"
+                        on_release: root.go_to_database()
+                    Button:
                         text: "Copy"
                         on_release: root.copy_output()
+                    Button:
+                        text: "A-"
+                        size_hint_x: None
+                        width: 44
+                        on_release: root.scale_font(-1)
+                    Button:
+                        text: "A+"
+                        size_hint_x: None
+                        width: 44
+                        on_release: root.scale_font(1)
                     Button:
                         text: "Interpretations"
                         on_release: root.go_to_interpretations()
@@ -383,6 +590,71 @@
                         text: "Home"
                         on_release: root.go_home()
 
+
+
+<DatabaseScreen>:
+    name: "database"
+    list_container: list_container
+    status_label: status_label
+    name_input: name_input
+    BoxLayout:
+        orientation: "vertical"
+        padding: 16
+        spacing: 10
+
+        Label:
+            text: "Saved Birth Charts"
+            font_size: "24sp"
+            size_hint_y: None
+            height: 40
+
+        Label:
+            text: "Load a saved chart to fill the Home form for review or regeneration, or save the current chart."
+            size_hint_y: None
+            height: 32
+            text_size: self.width, None
+            halign: "center"
+            valign: "middle"
+
+        ScrollView:
+            size_hint: 1, 1
+            do_scroll_x: False
+            bar_width: 8
+            BoxLayout:
+                id: list_container
+                orientation: "vertical"
+                size_hint_y: None
+                height: self.minimum_height
+
+        BoxLayout:
+            size_hint_y: None
+            height: 44
+            spacing: 8
+            TextInput:
+                id: name_input
+                hint_text: "Name for this chart (optional)"
+                multiline: False
+                size_hint_x: 0.6
+            Button:
+                text: "Save current chart"
+                size_hint_x: None
+                width: 140
+                on_release: root.save_current_chart()
+
+        Label:
+            id: status_label
+            text: ""
+            color: 0.9, 0.4, 0.2, 1
+            size_hint_y: None
+            height: 28
+
+        BoxLayout:
+            size_hint_y: None
+            height: 44
+            spacing: 8
+            Button:
+                text: "Home"
+                on_release: root.go_home()
 
 <ForecastScreen>:
     name: "forecast"
@@ -500,6 +772,16 @@
             Button:
                 text: "<- Chart"
                 on_release: root.go_to_chart()
+            Button:
+                text: "A-"
+                size_hint_x: None
+                width: 44
+                on_release: root.scale_font(-1)
+            Button:
+                text: "A+"
+                size_hint_x: None
+                width: 44
+                on_release: root.scale_font(1)
             Button:
                 text: "Interpretations"
                 on_release: root.go_to_interpretations()

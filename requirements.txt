@@ -8,6 +8,15 @@
 #
 pyswisseph==2.10.3.2
 kivy==2.3.1
+astropy
+astroquery
+jplephem
+
+# Optional / legacy. PyOpenGL is NOT imported by the sky panel at runtime:
+# the panel renders exclusively through Kivy's canvas (GLES2-safe, required
+# for Huawei/Android). PyOpenGL would only be needed if you manually invoke
+# the retired immediate-mode OpenGL renderer (astronomy/opengl/renderer.py).
+PyOpenGL
 
 # tzdata: IANA timezone database for Windows (zoneinfo backport data).
 tzdata

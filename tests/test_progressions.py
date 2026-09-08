@@ -62,7 +62,7 @@ def test_secondary_progressions_returns_chart():
     bd = _make_birth()
     chart = secondary_progressions(bd, _make_target())
     assert chart.chart_type == "Secondary Progression"
-    assert len(chart.positions) == 12
+    assert len(chart.positions) == 13
     assert len(chart.houses) == 12
 
 

@@ -57,6 +57,7 @@ def _default_planet_role() -> Dict[str, str]:
         "Uranus": "change, freedom & originality",
         "Neptune": "dreams, imagination & transcendence",
         "Pluto": "power, transformation & regeneration",
+        "Chiron": "the wounded healer & bridge between personal and collective",
     }
 
 
@@ -88,6 +89,7 @@ def _default_planet_sky_note() -> Dict[str, str]:
         "Uranus": "stirs sudden change in the background",
         "Neptune": "dissolves boundaries in dreams and moods",
         "Pluto": "works beneath the surface across years",
+        "Chiron": "highlights the healing wound - where it sits matters most",
     }
 
 
@@ -112,6 +114,7 @@ def _default_sign_sky_note() -> Dict[str, str]:
 _NATAL_PLANETS: tuple[str, ...] = (
     "Sun", "Moon", "Mercury", "Venus", "Mars",
     "Jupiter", "Saturn", "Uranus", "Neptune", "Pluto",
+    "Chiron",
 )
 
 _SIGNS: tuple[str, ...] = (
@@ -141,7 +144,7 @@ _HOUSE_MEANINGS: dict[int, str] = {
 
 
 def _default_planet_sign_text() -> Dict[str, str]:
-    """Per-planet-in-sign natal texts (10 planets × 12 signs = 120)."""
+    """Per-planet-in-sign natal texts (11 bodies × 12 signs = 132)."""
     roles = _default_planet_role()
     signs = _default_sign_text()
     out: Dict[str, str] = {}
@@ -155,7 +158,7 @@ def _default_planet_sign_text() -> Dict[str, str]:
 
 
 def _default_planet_house_text() -> Dict[str, str]:
-    """Per-planet-in-house natal texts (10 planets × 12 houses = 120)."""
+    """Per-planet-in-house natal texts (11 bodies × 12 houses = 132)."""
     roles = _default_planet_role()
     out: Dict[str, str] = {}
     for planet in _NATAL_PLANETS:
@@ -183,7 +186,7 @@ def _default_sun_moon_text() -> Dict[str, str]:
 
 
 def _default_aspect_pair_text() -> Dict[str, str]:
-    """Per-planet-pair aspect texts (45 pairs × 9 types = 405)."""
+    """Per-planet-pair aspect texts (55 pairs × 9 types = 495)."""
     roles = _default_planet_role()
     aspects = _default_aspect_text()
     out: Dict[str, str] = {}
@@ -210,7 +213,7 @@ def _default_angle_sign_text() -> Dict[str, str]:
 
 
 def _default_planet_sign_retro_text() -> Dict[str, str]:
-    """Retrograde qualifier texts (10 planets)."""
+    """Retrograde qualifier texts (11 bodies)."""
     roles = _default_planet_role()
     out: Dict[str, str] = {}
     for planet in _NATAL_PLANETS:

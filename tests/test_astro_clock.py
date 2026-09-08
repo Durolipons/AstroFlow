@@ -3,10 +3,19 @@
 import math
 from datetime import datetime, timezone
 
+from astronomy.models import (
+    AstronomySnapshot,
+    BodyState,
+    EclipticCoordinates,
+    EquatorialCoordinates,
+)
+from astronomy.timebase import build_time_context
 from kivy.clock import Clock
 from kivy.core.window import Window
 
+from core import constants as C
 from core.models import BirthData, Location
+from core.transits import transit_chart
 from ui.main import AstroFlowApp
 
 
@@ -131,3 +140,50 @@ def test_astro_clock_readout_shows_aspect_on_tap():
     assert clock.wheel._handle_tap(mx, my) is True
     assert hits == [target["aspect"]]
     assert target["aspect"].planet1_name in clock.readout_label.text
+
+
+def test_astro_clock_can_build_display_chart_from_astronomy_service():
+    class FakeAstronomyService:
+        def fetch_snapshot(self, backend_name, moment_utc, observer=None, body_ids=None, use_cache=True):
+            return AstronomySnapshot(
+                time=build_time_context(moment_utc),
+                bodies=[
+                    BodyState(
+                        body_id=C.SUN,
+                        name="Sun",
+                        equatorial=EquatorialCoordinates(ra_hours=1.5, dec_degrees=5.0, distance_au=1.0),
+                        ecliptic=EclipticCoordinates(
+                            longitude_degrees=15.0,
+                            latitude_degrees=0.0,
+                            radius_au=1.0,
+                            longitude_rate_deg_per_day=0.9,
+                        ),
+                    ),
+                ],
+                backend_name=backend_name,
+            )
+
+    Window.size = (1200, 780)
+    app = AstroFlowApp()
+    sm = app.build()
+    clock = sm.get_screen("home").astro_clock
+    clock.set_astronomy_service(FakeAstronomyService())
+
+    birth_data = _make_birth_data()
+    target = datetime(2024, 5, 1, 12, 0, tzinfo=timezone.utc)
+    base_chart = transit_chart(birth_data, target)
+    adapted = clock._build_astronomy_chart(base_chart, birth_data.location, "horizons")
+
+    sun = next(pos for pos in adapted.positions if pos.planet_id == C.SUN)
+    assert abs(sun.longitude - 15.0) < 1e-9
+    assert adapted.target_title.endswith("[JPL Horizons]")
+    assert any("Astronomy display source: horizons." in note for note in adapted.notes)
+
+
+def test_astro_clock_default_profile_matches_greenwich_observatory():
+    from ui.widgets.astro_clock import AstroClock
+
+    clock = AstroClock()
+
+    assert abs(clock._profile.location.latitude - 51.4779) < 1e-6
+    assert abs(clock._profile.location.longitude - 0.0) < 1e-6

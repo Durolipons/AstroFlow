@@ -28,7 +28,7 @@ AstroFlow/
 │   ├── geocoder.py        Optional external geocoding (Nominatim) + composite
 │   ├── data/
 │   │   └── cities.json    ~2,000 major cities (name, country, lat, lon, tz)
-│   └── ephe/              Optional Swiss Ephemeris .se1 data files
+│   └── ephe/              Bundled Swiss Ephemeris data (seas_18.se1 — Chiron)
 ├── ui/              # Kivy frontend (calls core/, never the reverse)
 │   ├── main.py            App entry point + ScreenManager
 │   ├── app.kv             Kivy layout for all screens
@@ -68,12 +68,22 @@ py -3.10 -m venv .venv
 pip install -r requirements.txt
 ```
 
-### Swiss Ephemeris data files (optional)
+### Swiss Ephemeris data files
 
 The engine works out-of-the-box using pyswisseph's built-in **Moshier**
-ephemeris (~0.1″ precision, 3000 BC – 3000 AD). For full Swiss Ephemeris
-precision, drop the official `sepl_*.se1` / `seas_*.se1` files into
-`core/ephe/` and the wrapper will pick them up automatically.
+ephemeris (~0.1″ precision, 3000 BC – 3000 AD). The asteroid data file for
+**Chiron** (`seas_18.se1`) is bundled in `core/ephe/` and auto-discovered at
+startup, so all 13 chart bodies (Sun–Pluto, the lunar nodes and Chiron) are
+computed fully offline. For full Swiss Ephemeris precision on the planets as
+well, drop the official `sepl_*.se1` files into the same folder — the wrapper
+picks up any `.se1`/`.seas` files it finds there automatically. If Chiron's
+file is absent it is skipped gracefully and the chart report notes which
+bodies could not be computed.
+
+> **Licensing:** Swiss Ephemeris data files (including the bundled
+> `seas_18.se1`) come from the Swiss Ephemeris project and are distributed
+> under the AGPL (or a paid professional licence from Astrodienst); bundling
+> them makes AstroFlow distribute under compatible terms.
 
 ## Running
 
@@ -131,7 +141,8 @@ pytest tests/ -v
 ```
 
 Covers aspect detection, birth-chart calculation (real Sun-sign checks),
-progression date math, solar-arc geometry, transit structure, the bundled city
+progression date math, solar-arc geometry, transit structure, Chiron ephemeris
+support (bundled data + graceful skip when absent), the bundled city
 database (integrity + search + nearest lookup), geocoder composition, the
 interpretation library and sky text, the interactive wheel (centring, glyph
 rendering, tap dispatch) and the interpretation editor UI.

@@ -123,7 +123,7 @@ def test_wheel_layout_prepared(wheel_and_chart):
     assert lay["R"] > 100  # realistic window size
     assert len(lay["signs"]) == 12
     assert len(lay["houses"]) == 12
-    assert len(lay["planets"]) == 12
+    assert len(lay["planets"]) == 13
     assert len(lay["aspects"]) > 0
 
 
