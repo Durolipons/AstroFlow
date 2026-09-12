@@ -228,6 +228,48 @@ class Ephemeris:
                 self.last_missing.append(C.PLANETS.get(pid, f"Body#{pid}"))
         return positions
 
+    # -- moon position -------------------------------------------------------
+    def moon_position(
+        self,
+        jd_ut: float,
+        sidereal: bool = False,
+        topocentric: bool = False,
+        speed: bool = True,
+    ) -> PlanetPosition:
+        """Return the Moon's ecliptic position at the given UT Julian day.
+
+        The Moon is treated as a first-class body in the same style as the planets,
+        so it can be requested alongside the planets in chart-level code and in
+        eclipse scanning. We always request speed (so retrograde and eclipse
+        detection can use motion when they need it), and we request latitude and
+        distance so the apparent position is useful for angular separations.
+        """
+        return self.planet_position(
+            jd_ut,
+            planet_id=C.MOON,
+            sidereal=sidereal,
+            topocentric=(
+                self._ensure_topo() if topocentric and self.ephe_path is not None else None
+            ),
+            speed=speed,
+        )
+
+    @property
+    def moon_body(self) -> int:
+        """Swiss Ephemeris body index for the Moon (matches SWE_MOON)."""
+        return C.MOON
+
+    @property
+    def planets_to_iterate(self) -> List[int]:
+        """The body IDs the ephemeris is configured to iterate over.
+
+        Used by code that wants to ask for a set of bodies in one logical
+        loop (planets + Moon + optional Chiron). The list is ordered so
+        callers can depend on a stable index order.
+        """
+        return list(C.DEFAULT_PLANET_IDS)
+
+
     # -- houses & angles ---------------------------------------------------
     def houses(
         self,

@@ -130,7 +130,8 @@ def test_editor_shows_new_natal_categories(editor_screen):
     screen, _ = editor_screen
     labels = list(screen.category_spinner.values)
     for label in ("Planet in sign", "Planet in house", "Sun / Moon blend",
-                  "Planet-pair aspect", "Angle in sign", "Retrograde note"):
+                  "Planet-pair aspect", "Angle in sign", "Retrograde by sign",
+                  "House ruler"):
         assert label in labels
 
 
@@ -138,8 +139,70 @@ def test_editor_shows_new_forecast_categories(editor_screen):
     """New Astro-Clock forecast categories appear in the spinner."""
     screen, _ = editor_screen
     labels = list(screen.category_spinner.values)
-    for label in ("Forecast ingress", "Forecast station", "Forecast lunation"):
+    for label in ("Forecast ingress", "Forecast station", "Forecast lunation",
+                  "Sign forecasts", "Forecast planet in sign",
+                  "Forecast sign aspect", "Lunation in sign",
+                  "Lunation life area", "Forecast period introductions",
+                  "Forecast transitions", "Forecast practical invitations",
+                  "Forecast quiet periods"):
         assert label in labels
+
+
+def test_editor_shows_new_synthesis_categories(editor_screen):
+    """Full-chart synthesis wording categories appear in the spinner."""
+    screen, _ = editor_screen
+    labels = list(screen.category_spinner.values)
+    for label in ("Synthesis section headings",
+                  "Synthesis narrative bridges",
+                  "Planetary archetypal imagery",
+                  "Synthesis strengths",
+                  "Synthesis growth language",
+                  "Forecast synthesis",
+                  "Synthesis conclusions"):
+        assert label in labels
+
+
+def test_editor_sign_forecast_category_loads_entries(editor_screen):
+    """Selecting 'Sign forecasts' populates entries like 'Aries · Daily'."""
+    screen, _ = editor_screen
+    screen.select_category("Sign forecasts")
+    assert screen._category == "sign_forecast"
+    assert "Aries · Daily" in screen.entry_spinner.values
+    assert "Taurus · Monthly" in screen.entry_spinner.values
+    assert "Pisces · Yearly" in screen.entry_spinner.values
+    assert screen.value_input.text  # default text loaded
+
+
+def test_editor_forecast_planet_in_sign_loads_entries(editor_screen):
+    screen, _ = editor_screen
+    screen.select_category("Forecast planet in sign")
+    assert screen._category == "forecast_planet_in_sign"
+    assert "Mars in your sign" in screen.entry_spinner.values
+    assert "Sun in your sign" in screen.entry_spinner.values
+    assert screen.value_input.text
+
+
+def test_editor_forecast_sign_aspect_loads_entries(editor_screen):
+    screen, _ = editor_screen
+    screen.select_category("Forecast sign aspect")
+    assert screen._category == "forecast_sign_aspect"
+    assert "Jupiter Trine your sign" in screen.entry_spinner.values
+    assert "Saturn Square your sign" in screen.entry_spinner.values
+    assert screen.value_input.text
+
+
+def test_editor_lunation_categories_load_entries(editor_screen):
+    screen, _ = editor_screen
+    screen.select_category("Lunation in sign")
+    assert screen._category == "forecast_lunation_in_sign"
+    assert "New Moon in Virgo" in screen.entry_spinner.values
+    assert "Full Moon in Pisces" in screen.entry_spinner.values
+    assert screen.value_input.text
+
+    screen.select_category("Lunation life area")
+    assert screen._category == "forecast_lunation_area"
+    assert "New Moon in area 3" in screen.entry_spinner.values
+    assert screen.value_input.text
 
 
 def test_editor_planet_sign_category_loads_entries(editor_screen):
@@ -152,6 +215,16 @@ def test_editor_planet_sign_category_loads_entries(editor_screen):
     assert screen.value_input.text  # default text loaded
 
 
+def test_editor_house_ruler_category_loads_entries(editor_screen):
+    """Selecting 'House ruler' populates the entry spinner with ruler keys."""
+    screen, _ = editor_screen
+    screen.select_category("House ruler")
+    assert screen._category == "house_ruler"
+    assert "ruler of 7 in house 6" in screen.entry_spinner.values
+    assert "ruler of 1 in house 1" in screen.entry_spinner.values
+    assert screen.value_input.text  # default text loaded
+
+
 def test_editor_forecast_phase_category_loads_entries(editor_screen):
     """Selecting 'Forecast lunation' populates the entry spinner with phase keys."""
     screen, _ = editor_screen
@@ -160,3 +233,29 @@ def test_editor_forecast_phase_category_loads_entries(editor_screen):
     assert "Full Moon" in screen.entry_spinner.values
     assert "New Moon" in screen.entry_spinner.values
     assert screen.value_input.text  # default text loaded
+
+
+def test_editor_synthesis_categories_load_and_save_entries(editor_screen):
+    """Full-chart synthesis categories load defaults and persist edits."""
+    screen, path = editor_screen
+
+    screen.select_category("Synthesis section headings")
+    assert screen._category == "synthesis_section_headings"
+    assert "chart_overview" in screen.entry_spinner.values
+    assert screen.value_input.text == "Your chart at a glance"
+
+    screen.select_category("Planetary archetypal imagery")
+    assert screen._category == "planetary_archetypal_imagery"
+    assert "Saturn" in screen.entry_spinner.values
+    screen.select_entry("Saturn")
+    assert "mountain path" in screen.value_input.text
+
+    screen.select_category("Forecast synthesis")
+    screen.select_entry("current_weather")
+    screen.value_input.text = "custom synthesis weather"
+    screen.save_entry()
+
+    with open(path, encoding="utf-8") as fh:
+        data = json.load(fh)
+    assert data["forecast_synthesis"]["current_weather"] == \
+        "custom synthesis weather"

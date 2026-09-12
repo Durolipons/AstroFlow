@@ -48,7 +48,7 @@ the hard-won Kivy pitfalls to avoid.
 | `aspects.py` | Generic angular-separation aspect detection with per-aspect orbs |
 | `progressions.py` | Secondary progressions and solar-arc directions |
 | `transits.py` | `transit_chart()` (sky now) and transit-to-natal aspects |
-| `interpretation.py` | All report/read text: `chart_report`, `full_birth_report`, `planet_detail_text`, `aspect_detail_text`, `sign_detail_text`, and the `sky_*` family for the Astro-Clock |
+| `interpretation.py` | All report/read text: `chart_report`, `full_birth_report`, `full_forecast_report`, the synthesis openers (`natal_poetic_synthesis`, `personal_forecast_poetic_synthesis`, `sun_sign_poetic_synthesis`), `planet_detail_text`, `aspect_detail_text`, `sign_detail_text`, and the `sky_*` family for the Astro-Clock |
 | `interpretation_store.py` | `InterpretationLibrary` dataclass + JSON load/save/caching (see §4) |
 | `chart_store.py` | Saved-birth-chart store: JSON list of `SavedChart` records (id, name, created, serialized `BirthData`) in `charts.json`, with `save_chart` / `load_saved_charts` / `delete_chart` / `find_chart` (see §8.1) |
 | `cities.py` / `geocoder.py` | Bundled city DB search + nearest lookup; optional Nominatim composite |
@@ -126,6 +126,15 @@ Storage and lifecycle:
   group still loads (missing groups keep their defaults) — never break this
   when adding a new group. To add one: default factory → dataclass field →
   `from_dict` tuple → `to_dict` → `_CATEGORY_LABELS` in the editor → tests.
+* Forecast reports use `forecast_period_intro`, `forecast_transition`,
+  `forecast_invitation`, and `forecast_quiet` to compose a concise opening
+  from the events already present in `SignHoroscope`. Reader-facing ranges
+  display inclusive dates. `ForecastPeriod.end_utc` is the boundary used to
+  derive that display; scanners may sample the boundary to avoid missing an
+  event immediately before it.
+* Day, Week, Month, and Year are rolling windows beginning at the selected
+  **Now** or **Custom date**. The Month/Year paths use calendar arithmetic,
+  including leap-day clamping, rather than fixed 30/365-day approximations.
 
 Two voices, strictly separated in `interpretation.py`:
 
@@ -337,9 +346,9 @@ pytest tests/test_wheel.py -v     # one area
 * **Examples:** the first-run seed is manual — "Load example charts" in the
   empty state calls `ui/presets.seed_example_charts()` (idempotent; seeds the
   five famous presets only when the store is empty).
-* **Font scaling:** Chart and Forecast screens expose **A−/A+** buttons wired
+* **Font scaling:** Chart, Forecast, and Sun-Sign screens expose **A−/A+** buttons wired
   to `scale_font(delta)`, clamped 8..32sp, applied to `chart_output` /
-  `forecast_output`. The Astro-Clock readout has the same A−/A+ pair
+  `forecast_output` / `output_input`. The Astro-Clock readout has the same A−/A+ pair
   (`AstroClock.scale_font`), plus a draggable divider (`PanelDivider`) that
   resizes the readout/wheel split on mouse drag (hover shows an up-down
   resize cursor); the readout height is clamped so the wheel never drops

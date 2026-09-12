@@ -101,12 +101,14 @@ def find_aspects_between_charts(
     natal_points: Iterable[PlanetPosition],
     orbs: Optional[dict] = None,
     aspects_defs: Optional[List[C.AspectDef]] = None,
+    suffix: str = "transit",
 ) -> List[Aspect]:
     """Find aspects from ``outer_points`` (transits/progressions) to natal.
 
-    The first list is treated as the 'active' sky (its names get a prefix),
-    the second as the static natal chart. Each outer body can aspect every
-    natal body in turn.
+    The first list is treated as the 'active' sky (its names get a
+    ``({suffix})`` prefix — e.g. "Saturn (transit)" or, with
+    ``suffix="prog"", "Saturn (prog)"), the second as the static
+    natal chart. Each outer body can aspect every natal body in turn.
     """
     defs = aspects_defs or C.ALL_ASPECTS
     result: List[Aspect] = []
@@ -119,7 +121,7 @@ def find_aspects_between_charts(
                 if abs(deviation) <= orb_limit:
                     result.append(
                         Aspect(
-                            planet1_name=f"{outer.name} (transit)",
+                            planet1_name=f"{outer.name} ({suffix})",
                             planet2_name=natal.name,
                             type_name=adef.name,
                             angle=adef.angle,

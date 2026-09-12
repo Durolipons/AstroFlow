@@ -21,11 +21,14 @@ from core.chart_store import configure_chart_store
 from core.interpretation_store import configure_interpretation_library
 from .screens import (
     ChartScreen,
+    ChineseChartScreen,
     DatabaseScreen,
     ForecastScreen,
     HomeScreen,
     InterpretationEditorScreen,
     SkyScreen,
+    SunSignForecastScreen,
+    VedicChartScreen,
 )
 
 
@@ -63,8 +66,11 @@ class AstroFlowApp(App):
         sm.pos = (0, 0)
         sm.add_widget(HomeScreen(name="home"))
         sm.add_widget(ChartScreen(name="chart"))
+        sm.add_widget(VedicChartScreen(name="vedic"))
+        sm.add_widget(ChineseChartScreen(name="chinese"))
         sm.add_widget(DatabaseScreen(name="database"))
         sm.add_widget(ForecastScreen(name="forecast"))
+        sm.add_widget(SunSignForecastScreen(name="sun_sign"))
         sm.add_widget(InterpretationEditorScreen(name="interpretations"))
         sm.add_widget(SkyScreen(name="sky"))
         return sm

@@ -304,6 +304,9 @@
                             text: "Generate Chart"
                             on_release: root.generate_chart()
                         Button:
+                            text: "Sun-Sign Forecasts"
+                            on_release: root.go_to_sun_signs()
+                        Button:
                             text: "Sky Panel"
                             on_release: root.go_to_sky()
                         Button:
@@ -521,6 +524,7 @@
                             radius: [12]
                     ChartWheel:
                         id: wheel
+                        anchor: "ascendant"
 
                 BoxLayout:
                     size_hint_y: None
@@ -532,6 +536,12 @@
                     Button:
                         text: "Forecast ->"
                         on_release: root.go_to_forecast()
+                    Button:
+                        text: "Vedic"
+                        on_release: root.go_to_vedic()
+                    Button:
+                        text: "Chinese"
+                        on_release: root.go_to_chinese()
 
             BoxLayout:
                 orientation: "vertical"
@@ -663,6 +673,12 @@
     target_year: target_year
     target_month: target_month
     target_day: target_day
+    target_hour: target_hour
+    target_minute: target_minute
+    date_source: date_source
+    forecast_period: forecast_period
+    chart_host: chart_host
+    wheel: wheel
     BoxLayout:
         orientation: "vertical"
         padding: 8
@@ -677,48 +693,111 @@
         BoxLayout:
             spacing: 10
 
+            # -- bi-wheel: natal planets inside, transits outside --
             BoxLayout:
                 orientation: "vertical"
-                size_hint_x: 0.42
+                size_hint_x: 0.50
                 spacing: 8
 
                 Label:
-                    text: "Target date"
+                    text: "Natal wheel + transits (tap a planet)"
                     size_hint_y: None
                     height: 24
 
+                SquareWheelHost:
+                    id: chart_host
+                    size_hint: 1, 1
+                    ChartWheel:
+                        id: wheel
+                        anchor: "ascendant"
+
+            # -- controls + report --
+            BoxLayout:
+                orientation: "vertical"
+                size_hint_x: 0.50
+                spacing: 8
+
+                Label:
+                    text: "Target date (UTC)"
+                    size_hint_y: None
+                    height: 22
+
                 GridLayout:
-                    cols: 3
+                    cols: 5
                     spacing: 6
                     size_hint_y: None
-                    height: self.minimum_height
+                    height: 40
 
                     TextInput:
                         id: target_year
                         hint_text: "YYYY"
                         input_filter: "int"
                         multiline: False
+                        font_size: "13sp"
                     TextInput:
                         id: target_month
                         hint_text: "MM"
                         input_filter: "int"
                         multiline: False
+                        font_size: "13sp"
                     TextInput:
                         id: target_day
                         hint_text: "DD"
                         input_filter: "int"
                         multiline: False
+                        font_size: "13sp"
+                    TextInput:
+                        id: target_hour
+                        hint_text: "HH"
+                        input_filter: "int"
+                        multiline: False
+                        font_size: "13sp"
+                    TextInput:
+                        id: target_minute
+                        hint_text: "Min"
+                        input_filter: "int"
+                        multiline: False
+                        font_size: "13sp"
 
-                Button:
+                BoxLayout:
                     size_hint_y: None
                     height: 42
-                    text: "Generate forecast"
-                    on_release: root.generate_forecast()
+                    spacing: 6
+                    Spinner:
+                        id: date_source
+                        text: "Now"
+                        values: ["Now", "Custom date"]
+                        on_text: root.set_date_source(self.text)
+                    Spinner:
+                        id: forecast_period
+                        text: "Day"
+                        values: ["Day", "Week", "Month", "Year"]
+                    Button:
+                        text: "Generate forecast"
+                        on_release: root.generate_forecast()
+
+                # Outer-ring toggle: which chart rides on the bi-wheel.
+                BoxLayout:
+                    size_hint_y: None
+                    height: 40
+                    spacing: 6
+                    Label:
+                        text: "Overlay:"
+                        size_hint_x: None
+                        width: 70
+                        font_size: "13sp"
+                    Spinner:
+                        id: overlay_spinner
+                        text: "Transits"
+                        values: ["Transits", "Progressions", "Solar Arc", "Off"]
+                        on_text: root.set_overlay_mode(self.text)
 
                 BoxLayout:
                     orientation: "vertical"
                     padding: 8
                     spacing: 4
+                    size_hint_y: None
+                    height: 96
                     canvas.before:
                         Color:
                             rgba: 0.06, 0.07, 0.1, 1
@@ -729,27 +808,30 @@
                     Label:
                         text: "Loaded chart"
                         size_hint_y: None
-                        height: 22
+                        height: 20
+                        font_size: "12sp"
                     Label:
                         id: summary_label
                         text: "No birth chart loaded."
                         size_hint_y: None
-                        height: 72
+                        height: 62
+                        font_size: "12sp"
                         text_size: self.width - 16, None
                         halign: "left"
                         valign: "top"
 
-            BoxLayout:
-                orientation: "vertical"
-                size_hint_x: 0.58
-                spacing: 8
-
                 Label:
                     text: "Forecast report"
                     size_hint_y: None
-                    height: 24
+                    height: 22
 
                 ScrollView:
+                    id: forecast_scroll
+                    do_scroll_x: False
+                    bar_width: 40
+                    bar_color: [0.45, 0.55, 0.85, 0.9]
+                    bar_inactive_color: [0.45, 0.55, 0.85, 0.35]
+                    scroll_type: ["bars"]
                     canvas.before:
                         Color:
                             rgba: 0.05, 0.06, 0.08, 1
@@ -772,6 +854,12 @@
             Button:
                 text: "<- Chart"
                 on_release: root.go_to_chart()
+            Button:
+                text: "Full report"
+                on_release: root.show_full_report()
+            Button:
+                text: "Copy"
+                on_release: root.copy_output()
             Button:
                 text: "A-"
                 size_hint_x: None
@@ -886,6 +974,197 @@
 
         Label:
             id: status_label
+            text: ""
+            color: 0.9, 0.4, 0.2, 1
+            size_hint_y: None
+            height: 28
+
+
+<VedicChartScreen>:
+    name: "vedic"
+    chart_output: chart_output
+    chart_host: chart_host
+    wheel: wheel
+    chart_status: chart_status
+    south_indian_chart: south_indian_chart
+    view_toggle: view_toggle
+    BoxLayout:
+        orientation: "vertical"
+        padding: 16
+        spacing: 10
+
+        Label:
+            text: "Vedic Astrology Chart (Jyotish)"
+            font_size: "24sp"
+            size_hint_y: None
+            height: 40
+
+        BoxLayout:
+            size_hint_y: None
+            height: 42
+            spacing: 10
+            Label:
+                text: "South Indian style with Nakshatras and Vimshottari Dasha"
+                text_size: self.width, None
+                halign: "center"
+                valign: "middle"
+            Button:
+                id: view_toggle
+                text: "Western"
+                size_hint_x: None
+                width: 100
+                on_release: root.toggle_view()
+
+        BoxLayout:
+            size_hint_y: 0.55
+            FloatLayout:
+                canvas.before:
+                    Color:
+                        rgba: 0.05, 0.06, 0.08, 1
+                    RoundedRectangle:
+                        pos: self.pos
+                        size: self.size
+                        radius: [12]
+                SouthIndianChart:
+                    id: south_indian_chart
+                    opacity: 1
+                    pos_hint: {"x": 0, "y": 0}
+                SquareWheelHost:
+                    id: chart_host
+                    opacity: 0
+                    disabled: True
+                    pos_hint: {"x": 0, "y": 0}
+                    ChartWheel:
+                        id: wheel
+
+        ScrollView:
+            do_scroll_x: False
+            bar_width: 4
+            TextInput:
+                id: chart_output
+                text: "Enter birth data and generate a chart to see the Vedic report."
+                readonly: True
+                multiline: True
+                font_size: "12sp"
+                foreground_color: 0.90, 0.92, 0.95, 1
+                background_color: 0.05, 0.06, 0.08, 1
+                cursor_color: 0.90, 0.92, 0.95, 0.35
+                size_hint_y: None
+                height: max(self.minimum_height, self.parent.height)
+                padding: 6, 4
+
+        BoxLayout:
+            size_hint_y: None
+            height: 44
+            spacing: 8
+            Button:
+                text: "Full report"
+                on_release: root.show_full_report()
+            Button:
+                text: "Copy"
+                on_release: root.copy_output()
+            Button:
+                text: "A-"
+                on_release: root.scale_font(-1)
+            Button:
+                text: "A+"
+                on_release: root.scale_font(1)
+            Button:
+                text: "Western"
+                on_release: root.go_to_chart()
+            Button:
+                text: "Chinese"
+                on_release: root.go_to_chinese()
+            Button:
+                text: "Interpretations"
+                on_release: root.go_to_interpretations()
+            Button:
+                text: "Home"
+                on_release: root.go_home()
+
+        Label:
+            id: chart_status
+            text: ""
+            color: 0.9, 0.4, 0.2, 1
+            size_hint_y: None
+            height: 28
+
+
+<ChineseChartScreen>:
+    name: "chinese"
+    chart_output: chart_output
+    chart_status: chart_status
+    bazi_chart: bazi_chart
+    BoxLayout:
+        orientation: "vertical"
+        padding: 16
+        spacing: 10
+
+        Label:
+            text: "Chinese Astrology Chart (BaZi)"
+            font_size: "24sp"
+            size_hint_y: None
+            height: 40
+
+        Label:
+            text: "Four Pillars of Destiny with Heavenly Stems and Earthly Branches"
+            size_hint_y: None
+            height: 42
+            text_size: self.width, None
+            halign: "center"
+            valign: "middle"
+
+        BaZiChart:
+            id: bazi_chart
+            size_hint_y: 0.5
+
+        ScrollView:
+            do_scroll_x: False
+            bar_width: 4
+            TextInput:
+                id: chart_output
+                text: "Enter birth data and generate a chart to see the Chinese astrology report."
+                readonly: True
+                multiline: True
+                font_size: "12sp"
+                foreground_color: 0.90, 0.92, 0.95, 1
+                background_color: 0.05, 0.06, 0.08, 1
+                cursor_color: 0.90, 0.92, 0.95, 0.35
+                size_hint_y: None
+                height: max(self.minimum_height, self.parent.height)
+                padding: 6, 4
+
+        BoxLayout:
+            size_hint_y: None
+            height: 44
+            spacing: 8
+            Button:
+                text: "Full report"
+                on_release: root.show_full_report()
+            Button:
+                text: "Copy"
+                on_release: root.copy_output()
+            Button:
+                text: "A-"
+                on_release: root.scale_font(-1)
+            Button:
+                text: "A+"
+                on_release: root.scale_font(1)
+            Button:
+                text: "Western"
+                on_release: root.go_to_chart()
+            Button:
+                text: "Vedic"
+                on_release: root.go_to_vedic()
+            Button:
+                text: "Interpretations"
+                on_release: root.go_to_interpretations()
+            Button:
+                text: "Home"
+                on_release: root.go_home()
+
+        Label:
+            id: chart_status
             text: ""
             color: 0.9, 0.4, 0.2, 1
             size_hint_y: None

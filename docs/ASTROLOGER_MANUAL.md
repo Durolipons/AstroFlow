@@ -94,6 +94,49 @@ Saturn". They describe general sky weather.
 
 ---
 
+## 3.1 The Sun-Sign Forecast screen — shareable horoscopes
+
+Birth-chart free: the **Sun-Sign Forecasts** screen (Home → *Sun-Sign
+Forecasts*) generates a Daily, Weekly, Monthly or Yearly horoscope for any of
+the 12 signs:
+
+1. Pick **Period** (Daily / Weekly / Monthly / Yearly) and the **Sign**.
+2. Set the start date (defaults to today).
+3. Press **Generate**. The engine scans the ephemeris for the window and
+   composes the report.
+
+The report begins with its inclusive dates and a reader-friendly opening:
+**Today**, **This week**, **This month**, or **Over the next year**, followed
+by a narrative synthesis for that Sun sign and period. It does not replace
+the supporting data, which follows in the detailed sections:
+
+   * **the Moon first**: its current phase and sign ("waning crescent in
+     Virgo") and when it changes signs,
+   * **the lunation**: "New Moon in Virgo on 2026-09-11 03:27 UTC" with its
+     meaning, the planets it aspects ("the new moon sextile Mars, orb 1.3°")
+     and **YOUR MOON ANGLE** — which whole-sign life area (1-12) the lunation
+     lands in for *this* sign,
+   * the Moon's sign-by-sign journey through the window,
+   * planets transiting the sign itself at the start of the selected window
+     ("Mars in your sign"), clearly labelled with the snapshot date,
+   * planets aspecting the sign at the start of the window (trine / sextile /
+     square / opposition), also labelled as a snapshot,
+   * ingresses entering or leaving the sign (with dates and times),
+   * the window's major sky aspects — including *when each pair enters an
+     orb, when the aspect is exact, and when it leaves*,
+   * the window's planet stations and lunations,
+   * **eclipses**: if the window contains a solar or lunar eclipse passage the
+     report notes the type and date (e.g. "Lunar Eclipse (Full Moon) on
+     2025-03-14 06:00 UTC (deep)") plus a short generic eclipse note, without
+     pretending to give sign or house meaning — that is a later layer.
+
+Everything is general sky weather ("not tied to any birth chart") and every
+line of meaning comes from the Interpretation Library — the Sign forecasts
+group in the Interpretations editor is exactly what appears in your posts.
+Select the text and press **Ctrl+C** to copy it for social media.
+
+---
+
 ## 4. Tapping the wheel — reading about anything
 
 Both wheels (Astro-Clock and natal chart) are fully interactive. **Tap any
@@ -122,11 +165,11 @@ Reached automatically after **Generate Chart**. It shows the natal wheel
   zodiac ring, house cusp lines, ASC/MC axis, and aspect lines coloured by
   family (trines/sextiles blue-green, squares/oppositions red, conjunctions
   violet, minor aspects grey). Tap anything to read about it (see above).
-* **The report panel** — starts with the full text report: header data, a
-  table of planetary positions with sign, degree, house and motion, angles,
-  house cusps and every aspect with its orb. When you tap the wheel, the
-  panel switches to that item's interpretation; press **Full report** to
-  bring the complete text back.
+* **The report panel** — starts with a whole-chart synthesis, then the full
+  text report: header data, a table of planetary positions with sign, degree,
+  house and motion, angles, house cusps and every aspect with its orb. When
+  you tap the wheel, the panel switches to that item's interpretation; press
+  **Full report** to bring the complete text back.
 
 Buttons: **Full report** (restore the report), **Forecast →** (next screen),
 **Interpretations** (edit wording), **Home**.
@@ -137,6 +180,11 @@ Buttons: **Full report** (restore the report), **Forecast →** (next screen),
 
 Set a **target date** (the year/month/day fields) and press
 **Generate forecast**. For that date AstroFlow calculates and reports:
+
+* a narrative **personal forecast synthesis** for the natal chart and the
+  chosen period,
+* the matching **Sun-sign astro-clock detail** for the natal Sun's sign
+  (dates, Moon/lunation/ingress/aspect sections),
 
 * **Secondary progressions** — the progressed planets (one day for a year),
   their signs and aspects.
@@ -158,6 +206,10 @@ replace the built-in phrasing with your own voice. Open it with the
 
 ### The six text groups
 
+The library has grown past the original six — the full set is listed below
+ Natal combination and Astro-Clock forecast groups are edited the same way
+ (pick the Category, then the Entry).
+
 | Group (dropdown label) | Library field | What it controls |
 | --- | --- | --- |
 | **Sun sign keywords** | `sign_text` | The keyword line for each sign, used in sign and planet readings |
@@ -166,6 +218,19 @@ replace the built-in phrasing with your own voice. Open it with the
 | **Sky aspect wording** | `sky_aspect_text` | The verb used for aspects in the Astro-Clock ("…keeps the day moving smoothly") |
 | **Sky planet notes** | `planet_sky_note` | The "Right now:" line per planet in the Astro-Clock |
 | **Sign sky notes** | `sign_sky_note` | The "Right now:" line per sign in the Astro-Clock |
+| **Planet in sign** | `planet_sign` | Planet-in-sign natal lines (Sun..Mars hand-written; outers element/modality) |
+| **Planet in house** | `planet_house` | Planet-in-house natal lines (verb + house arena) |
+| **Sun / Moon blend** | `sun_moon` | Sun–Moon blend (rotating openers + element/modality relation) |
+| **Planet-pair aspect** | `aspect_pair` | Natal aspect lines (pair theme + flow + personal/outer family note) |
+| **Angle in sign** | `angle_sign` | Ascendant / MC in-sign lines |
+| **Retrograde note** | `planet_sign_retro` | Retrograde qualifier per planet |
+| **House ruler** | `house_ruler` | House-ruler lines (cusp ruler + placed house; report adds HOUSE RULERS section) |
+| **Forecast introductions / transitions / invitations / quiet periods** | `forecast_period_intro`, `forecast_transition`, `forecast_invitation`, `forecast_quiet` | Reader-friendly openings and connective language for each period |
+| **Forecast ingress / station / lunation** | `forecast_ingress`, `forecast_station`, `forecast_phase` | Astro-Clock sky-event wording |
+| **Sign forecasts** | `sign_forecast` | Evergreen Daily / Weekly / Monthly / Yearly per-sign lines |
+| **Forecast planet in sign / sign aspect** | `forecast_planet_in_sign`, `forecast_sign_aspect` | Per-sign forecast meanings |
+| **Forecast retrograde state** | `forecast_retrograde` | Ongoing-state note per retrograde planet (`RETROGRADES NOW` section + `(retrograde)` tags) |
+| **Lunation in sign / life area** | `forecast_lunation_in_sign`, `forecast_lunation_area` | Lunation meaning by sign and by life area |
 
 ### Editing an entry
 

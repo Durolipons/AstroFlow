@@ -27,14 +27,14 @@ system.** A future optional `house_system` qualifier can add nuance
 
 | Group | Key format | Count | Phase |
 |---|---|---|---|
-| `planet_sign` | `"Sun in Gemini"` | 10 × 12 = **120** | 1 |
-| `planet_house` | `"Sun in house 7"` | 10 × 12 = **120** | 1 |
-| `planet_sign_retro` | `"Mercury retrograde in Taurus"` | 10 | 3 |
-| `sun_moon` | `"Sun Gemini · Moon Cancer"` | 12 × 12 = **144** | 2 |
-| `aspect_pair` | `"Sun trine Saturn"` (node pairs included) | 66 pairs × 9 types = **594** | 2 |
-| `angle_sign` | `"Ascendant in Sagittarius"`, `"MC in Leo"` | 24 | 3 |
-| `house_ruler` | `"ruler of 7 (Venus) in house 6"` | 12 × 12 = 144 | 4 |
-| existing groups | `sign_text`, `planet_role`, `aspect_text` | 12 + 10 + 9 | done |
+| `planet_sign` | `"Sun in Gemini"` | 11 × 12 = **132** (Sun..Mars hand-authored; Jupiter..Chiron element/modality frames) | 1 done |
+| `planet_house` | `"Sun in house 7"` | 11 × 12 = **132** (planet verb + house arena) | 1 done |
+| `sun_moon` | `"Sun Gemini · Moon Cancer"` | 12 × 12 = **144** (rotating openers; per-sign new-moon, per-element, per-modality relations) | 2 done |
+| `aspect_pair` | `"Sun trine Saturn"` | 55 pairs × 9 types = **495** (pair theme + aspect flow + personal/outer family note) | 2 done |
+| `angle_sign` | `"Ascendant in Sagittarius"`, `"MC in Leo"` | 24 (mask vs vocation lines) | 3 done |
+| `planet_sign_retro` | `"Mercury retrograde"` | 11 (planet-specific review) | 3 done |
+| `house_ruler` | `"ruler of 7 in house 6"` | 12 × 12 = **144** (cusp ruler + placed house, modern rulership) | 4 done |
+| existing groups | `sign_text`, `planet_role`, `aspect_text` | 12 + 11 + 9 | done |
 
 Phase 1–2 core corpus ≈ **~1,000 texts**. Every natal report composes:
 `planet_role + planet_sign + planet_house (+ retro note) + aspect_pair × n +
@@ -56,10 +56,12 @@ existing `Ephemeris` wrapper) for events and buckets them by period:
 
 | Event | Detection | Text keys |
 |---|---|---|
-| **Ingress** (body changes sign) | longitude crossing sign boundary (sample + bisect) | `forecast_ingress`: 10 × 12 = **120** |
-| **Station** (retro ⇄ direct) | speed sign change (sample + bisect) | `forecast_station`: 10 × 2 = **20** |
-| **Sky aspect** (planet–planet, exact) | relative longitude crossing exact angle within orb | reuse `sky_aspect_text` (9) + optional per-pair 594 |
+| **Ingress** (body changes sign) | longitude crossing sign boundary (sample + bisect) | `forecast_ingress`: 11 × 12 = **132** (planet sky note + sign sky note) |
+| **Station** (retro ⇄ direct) | speed sign change (sample + bisect) | `forecast_station`: 11 × 2 = **22** (planet-specific pause/resume) |
+| **Currently retrograde** (ongoing state) | `PlanetPosition.is_retrograde` / speed < 0 at window start | `forecast_retrograde`: **9** (`"Mars retrograde forecast"`; Sun/Moon excluded) |
+| **Sky aspect** (planet–planet, exact) | relative longitude crossing exact angle within orb | reuse `sky_aspect_text` (9) + optional per-pair 495 |
 | **Lunation** (New / Full / quarters) | Sun–Moon elongation 0/90/180/270 | `forecast_phase`: **8** |
+| **Eclipse** (solar / lunar passage) | near new/full + Moon near ecliptic plane (generic node proxy) | `eclipse_layer`: **3** generic lines (solar/lunar/none) — mention only; no sign/house meaning yet |
 | Ambiance | current sign of Sun/Moon | reuse `sign_sky_note`, `planet_sky_note` |
 
 Period rendering:
@@ -74,6 +76,34 @@ Period rendering:
 The Astro-Clock gains a **Week / Month / Year** toggle that renders the
 matched events with their texts, newest first, each with date + time.
 
+### Implemented: `core/forecast.py` + sun-sign horoscopes
+
+`core/forecast.py` implements the scanner described above and folds the sky
+onto the 12 sun signs (whole-sign convention):
+
+  * new `forecast_planet_in_sign` (11) + `forecast_sign_aspect` (44) groups
+    give the per-planet *meaning* (`"Mars in your sign"`,
+    `"Jupiter Trine your sign"`); `forecast_ingress`, `forecast_station`,
+    `forecast_phase` and `sky_aspect_text` are reused for the rest.
+  * `forecast_period / daily_forecast / weekly_forecast / monthly_forecast`
+    scan the ephemeris window; `sun_sign_horoscope` maps events to a sign;
+    `core.interpretation.sign_horoscope_text` composes copyable text.
+  * period windows: Daily = 1 day, Weekly = 7 days, Monthly = the same
+    day in the next calendar month (clamped when needed), and Yearly = the
+    same date in the next calendar year (with leap-day clamping).
+  * **Moon cycles are headline events**: `LunationEvent` carries the Moon's
+    *sign* at the exact moment ("New Moon in Virgo") plus the major aspects
+    the lunation makes to the other planets (`scan_lunation_aspects`,
+    tightest orb first — e.g. "New Moon sextile Mars, orb 1.3°").
+    `moon_state` gives the Moon's current 8-fold phase, its sign and its
+    next sign change; `lunation_area_offset` folds each lunation onto the
+    reader's whole-sign life area (1-12).  New editable groups:
+    `forecast_lunation_in_sign` (4 x 12 = 48) and `forecast_lunation_area`
+    (4 x 12 = 48); the composed report leads with MOON NOW / THIS LUNATION /
+    YOUR MOON ANGLE / THE MOON'S JOURNEY before the planet sections.
+  * the editable library groups power the wording, so astrologers can rewrite
+    every meaning in the Interpretations screen without touching the engine.
+
 ---
 
 ## 3. Milestones
@@ -84,8 +114,9 @@ matched events with their texts, newest first, each with date + time.
 3. Author Phase 1 natal texts (planet_sign + planet_house = 240).
 4. Build `core/forecast.py` event scanner + Week/Month/Year UI in the
    Astro-Clock; author `forecast_ingress`/`forecast_station`/`forecast_phase`.
-5. Author Phase 2 (sun_moon 144, aspect_pair 594).
-6. Phase 3 polish: retro notes, angle texts, rulers, eclipse support.
+5. Author Phase 2 (sun_moon 144, aspect_pair 495).
+6. Phase 3 polish: retro notes (11 planet-specific), angle texts (24 mask vs
+   vocation), rulers; **eclipse support done** (generic: \scan_eclipses\, \EclipsePeriod\, period wiring, \eclipse_layer\, SignHoroscope mention) — verified Mar 2025 lunar eclipse.
 
 ## 4. Verification baseline (what the corpus builds on)
 

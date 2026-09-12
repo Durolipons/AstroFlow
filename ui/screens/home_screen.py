@@ -142,6 +142,10 @@ class HomeScreen(Screen):
         """Open the interpretation editor screen."""
         self.manager.current = "interpretations"
 
+    def go_to_sun_signs(self):
+        """Open the birth-chart-free sun-sign forecast screen."""
+        self.manager.current = "sun_sign"
+
     def go_to_sky(self):
         """Open the astronomy-only sky panel using the current form/profile."""
         try:

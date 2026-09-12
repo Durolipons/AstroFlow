@@ -28,6 +28,7 @@ from kivy.clock import Clock
 from kivy.core.text import Label as CoreLabel
 from kivy.graphics import (Canvas, Color, Ellipse, Line, PushMatrix, PopMatrix,
                            Rectangle, Translate, Triangle)
+from kivy.properties import StringProperty
 from kivy.uix.widget import Widget
 
 from core import constants as C
@@ -36,21 +37,35 @@ from core import constants as C
 # ---------------------------------------------------------------------------
 # Pure geometry helpers (no Kivy state — unit-testable)
 # ---------------------------------------------------------------------------
-def lon_to_angle(lon: float) -> float:
+def lon_to_angle(lon: float, offset: float = 0.0) -> float:
     """Ecliptic longitude -> screen angle in RADIANS.
 
-    Traditional wheel: 0 deg Aries at the 9 o'clock position (left) and
-    longitudes increase counter-clockwise. The returned value is
-    ``radians(180 + lon)`` (not normalised to [0, 2π)); ``cos``/``sin`` in
-    :func:`point_on_circle` are periodic, so 0 deg Aries left, 0 deg Cancer up
-    and 0 deg Capricorn down.
+    Wheel orientation: longitudes increase counter-clockwise and the
+    longitude ``offset`` is drawn at the 9 o'clock position (left). With
+    the default ``offset=0`` this puts 0 deg Aries at the left (a fixed
+    zodiac wheel, as used by the Astro-Clock's current-sky view). With
+    ``offset=Ascendant`` the chart's own Ascendant sits at the left —
+    the standard natal-chart orientation used by astro.com and every
+    professional program. The rotation always comes from the attached
+    chart's own ``angles["Ascendant"]``; no chart-specific value is ever
+    used here.
+
+    The returned value is ``radians(180 + lon - offset)`` (not normalised
+    to [0, 2π)); ``cos``/``sin`` in :func:`point_on_circle` are periodic,
+    so with ``offset=0``: 0 deg Aries left, 0 deg Cancer bottom and
+    0 deg Capricorn top.
     """
-    return math.radians(180.0 + (lon % 360.0))
+    return math.radians(180.0 + ((lon - offset) % 360.0))
 
 
-def point_on_circle(cx: float, cy: float, r: float, lon: float):
-    """(x, y) on a circle of radius ``r`` at ecliptic longitude ``lon``."""
-    a = lon_to_angle(lon)
+def point_on_circle(cx: float, cy: float, r: float, lon: float,
+                    offset: float = 0.0):
+    """(x, y) on a circle of radius ``r`` at ecliptic longitude ``lon``.
+
+    ``offset`` is the longitude drawn at the 9 o'clock (left) position —
+    see :func:`lon_to_angle`.
+    """
+    a = lon_to_angle(lon, offset)
     return cx + r * math.cos(a), cy + r * math.sin(a)
 
 
@@ -148,6 +163,7 @@ def glyph_font_path():
             return _glyph_font
     return None
 PLANET_COLOR = (0.16, 0.22, 0.42)
+OVERLAY_PLANET_COLOR = (0.90, 0.55, 0.20)   # transiting / progressed ring
 SELECT_COLOR = (1.00, 0.72, 0.10)
 
 
@@ -159,6 +175,22 @@ class ChartWheel(Widget):
     ``on_sign_selected(sign_name)`` and ``on_aspect_selected(aspect)``.
     """
 
+    anchor = StringProperty("aries")
+    """Wheel rotation anchor.
+
+    * ``"aries"``     -- 0 deg Aries is drawn at the 9 o'clock (left)
+      position: a fixed zodiac wheel (the Astro-Clock's current-sky view).
+    * ``"ascendant"`` -- the chart's own Ascendant is drawn at the 9
+      o'clock position and the Midheaven rises toward the top: the
+      standard natal-chart orientation used by astro.com and professional
+      software.
+
+    Defaults to ``"aries"``; the natal ``ChartScreen`` sets
+    ``"ascendant"``. The rotation always comes from the attached chart's
+    own ``angles["Ascendant"]``, so every birth chart (any location,
+    latitude, time, house system or zodiac) is oriented by the same rule.
+    """
+
     def __init__(self, **kwargs):
         for ev in ("on_planet_selected", "on_sign_selected",
                    "on_aspect_selected"):
@@ -166,10 +198,17 @@ class ChartWheel(Widget):
         super().__init__(**kwargs)
 
         self.chart = None
+        # Optional second chart (transits / progressions) drawn on an outer
+        # ring -- the standard bi-wheel. ``overlay_aspects`` holds the
+        # transit-to-natal aspects whose lines join the two rings.
+        self.overlay_chart = None
+        self.overlay_aspects = None
+        self.overlay_suffix = "transit"
         self._layout = None                 # computed geometry (shared w/ hit-test)
         self._sel_planet: Optional[str] = None
         self._sel_aspect: Optional[int] = None
         self._sel_sign: Optional[str] = None
+        self._sel_overlay: Optional[str] = None
         self._trigger = None
 
         # All wheel art (rings, wedges, aspect lines AND glyph text) is drawn
@@ -203,8 +242,35 @@ class ChartWheel(Widget):
         self._sel_planet = None
         self._sel_aspect = None
         self._sel_sign = None
+        self._sel_overlay = None
         # Prepare synchronously so taps/queries work immediately; the
         # scheduled redraw re-runs after the layout pass settles sizes.
+        self._prepare()
+        self._schedule_redraw()
+
+    def set_overlay(self, chart, aspects=None, suffix: str = "transit") -> None:
+        """Attach a second chart (transits/progressions) on an outer ring.
+
+        ``aspects`` is the optional list of outer-to-natal ``Aspect``
+        objects; when given, lines are drawn from each outer-ring planet
+        to the natal planet it touches.  ``suffix`` labels the ring so
+        overlays can be transits (default), progressions ("prog") or
+        solar-arc directions ("arc"); tap dispatches
+        ``on_planet_selected`` with the name suffixed ``({suffix})``.
+        """
+        self.overlay_chart = chart
+        self.overlay_aspects = aspects
+        self.overlay_suffix = suffix or "transit"
+        self._sel_overlay = None
+        self._prepare()
+        self._schedule_redraw()
+
+    def clear_overlay(self) -> None:
+        """Remove the outer ring (back to a plain single chart)."""
+        self.overlay_chart = None
+        self.overlay_aspects = None
+        self.overlay_suffix = "transit"
+        self._sel_overlay = None
         self._prepare()
         self._schedule_redraw()
 
@@ -212,6 +278,7 @@ class ChartWheel(Widget):
         self._sel_planet = None
         self._sel_aspect = None
         self._sel_sign = None
+        self._sel_overlay = None
         self._schedule_redraw()
 
     # -- internals: scheduling ---------------------------------------------
@@ -234,6 +301,14 @@ class ChartWheel(Widget):
             self._layout = None
             return
 
+        # Rotation anchor. With anchor="ascendant" the chart's own
+        # Ascendant is drawn at the 9 o'clock (left) position, so every
+        # point below is placed relative to it (standard natal-chart
+        # orientation). anchor="aries" keeps 0 deg Aries there instead.
+        asc_lon = (chart.angles.get("Ascendant")
+                   if self.anchor == "ascendant" else None)
+        offset = float(asc_lon) if asc_lon is not None else 0.0
+
         # Geometry is computed in local widget coordinates.
         cx, cy = self.width / 2.0, self.height / 2.0
         R = max(10.0, min(self.width, self.height) / 2.0 - 8.0)
@@ -242,12 +317,13 @@ class ChartWheel(Widget):
         r_house = R * 0.80       # house numbers
         r_planet = R * 0.64      # planet glyph centre
         r_aspect = R * 0.60      # aspect line endpoints
+        r_overlay = R * 0.75     # transit/progressed (outer-ring) glyphs
         r_line_in = R * 0.18     # house / angle lines inner end
 
         # Signs (ring segments + labels).
         signs = []
         for i, name in enumerate(C.SIGNS):
-            x, y = point_on_circle(cx, cy, r_sign, i * 30.0 + 15.0)
+            x, y = point_on_circle(cx, cy, r_sign, i * 30.0 + 15.0, offset)
             signs.append({"name": name, "abbr": C.SIGNS_SHORT[i],
                           "glyph": SIGN_GLYPH[i],
                           "color": ELEMENT_COLORS[C.ELEMENTS[name]],
@@ -257,13 +333,14 @@ class ChartWheel(Widget):
         cusps, houses = [], []
         hlist = list(chart.houses)
         for i, h in enumerate(hlist):
-            x1, y1 = point_on_circle(cx, cy, r_line_in, h.longitude)
-            x2, y2 = point_on_circle(cx, cy, r_in, h.longitude)
+            x1, y1 = point_on_circle(cx, cy, r_line_in, h.longitude, offset)
+            x2, y2 = point_on_circle(cx, cy, r_in, h.longitude, offset)
             cusps.append({"number": h.number, "lon": h.longitude,
                           "x1": x1, "y1": y1, "x2": x2, "y2": y2})
             nxt = hlist[(i + 1) % 12].longitude
             delta = (nxt - h.longitude) % 360.0
-            hx, hy = point_on_circle(cx, cy, r_house, h.longitude + delta / 2.0)
+            hx, hy = point_on_circle(cx, cy, r_house,
+                                     h.longitude + delta / 2.0, offset)
             houses.append({"number": h.number, "x": hx, "y": hy})
 
         # Planets (glyph centre uses a collision-adjusted display angle).
@@ -275,7 +352,7 @@ class ChartWheel(Widget):
             if prev is not None and (disp - prev) % 360.0 < min_gap:
                 disp = prev + min_gap
             prev = disp
-            gx, gy = point_on_circle(cx, cy, r_planet, disp)
+            gx, gy = point_on_circle(cx, cy, r_planet, disp, offset)
             planets.append({"name": p.name,
                             "abbr": PLANET_ABBR.get(p.planet_id, "??"),
                             "glyph": PLANET_GLYPH.get(p.planet_id, ""),
@@ -289,10 +366,43 @@ class ChartWheel(Widget):
             pa, pb = by_name.get(a.planet1_name), by_name.get(a.planet2_name)
             if pa is None or pb is None:
                 continue
-            x1, y1 = point_on_circle(cx, cy, r_aspect, pa.longitude)
-            x2, y2 = point_on_circle(cx, cy, r_aspect, pb.longitude)
+            x1, y1 = point_on_circle(cx, cy, r_aspect, pa.longitude, offset)
+            x2, y2 = point_on_circle(cx, cy, r_aspect, pb.longitude, offset)
             aspects.append({"aspect": a, "x1": x1, "y1": y1,
                             "x2": x2, "y2": y2})
+
+        # Outer-ring (transit / progressed) planets + transit-to-natal
+        # aspect lines joining the two rings.
+        overlay = []
+        t_aspects = []
+        if self.overlay_chart is not None:
+            min_gap_o = 9.0
+            prev_o = None
+            for p in sorted(self.overlay_chart.positions,
+                            key=lambda p: p.longitude):
+                disp = p.longitude
+                if prev_o is not None and (disp - prev_o) % 360.0 < min_gap_o:
+                    disp = prev_o + min_gap_o
+                prev_o = disp
+                gx, gy = point_on_circle(cx, cy, r_overlay, disp, offset)
+                overlay.append({"name": f"{p.name} ({self.overlay_suffix})",
+                                "abbr": PLANET_ABBR.get(p.planet_id, "??"),
+                                "glyph": PLANET_GLYPH.get(p.planet_id, ""),
+                                "lon": p.longitude, "x": gx, "y": gy,
+                                "retro": p.is_retrograde})
+            by_natal = {p.name: p for p in chart.positions}
+            by_over = {p.name: p for p in self.overlay_chart.positions}
+            for a in (self.overlay_aspects or []):
+                base = a.planet1_name.replace(
+                    f" ({self.overlay_suffix})", "").strip()
+                po = by_over.get(base)
+                pn = by_natal.get(a.planet2_name)
+                if po is None or pn is None:
+                    continue
+                x1, y1 = point_on_circle(cx, cy, r_overlay, po.longitude, offset)
+                x2, y2 = point_on_circle(cx, cy, r_aspect, pn.longitude, offset)
+                t_aspects.append({"aspect": a, "x1": x1, "y1": y1,
+                                  "x2": x2, "y2": y2})
 
         # Angles (ASC / MC lines).
         angles = []
@@ -300,14 +410,16 @@ class ChartWheel(Widget):
             lon = chart.angles.get(name)
             if lon is None:
                 continue
-            xi, yi = point_on_circle(cx, cy, r_line_in, lon)
-            xo, yo = point_on_circle(cx, cy, r_in, lon)
+            xi, yi = point_on_circle(cx, cy, r_line_in, lon, offset)
+            xo, yo = point_on_circle(cx, cy, r_in, lon, offset)
             angles.append({"name": name, "lon": lon,
                            "x1": xi, "y1": yi, "x2": xo, "y2": yo})
 
         self._layout = {"cx": cx, "cy": cy, "R": R, "r_in": r_in,
+                        "r_overlay": r_overlay, "offset": offset,
                         "signs": signs, "cusps": cusps, "houses": houses,
                         "planets": planets, "aspects": aspects,
+                        "overlay": overlay, "t_aspects": t_aspects,
                         "angles": angles}
 
     def _redraw(self):
@@ -318,6 +430,7 @@ class ChartWheel(Widget):
         if lay is None or lay["R"] <= 12:
             return
         cx, cy, R = lay["cx"], lay["cy"], lay["R"]
+        offset = lay["offset"]
 
         with self._art_canvas:
             # Canvas instructions for a plain Widget are drawn in the parent's
@@ -341,9 +454,9 @@ class ChartWheel(Widget):
                 steps = 12
                 for s in range(steps):
                     x1, y1 = point_on_circle(
-                        cx, cy, R, start + 30.0 * s / steps)
+                        cx, cy, R, start + 30.0 * s / steps, offset)
                     x2, y2 = point_on_circle(
-                        cx, cy, R, start + 30.0 * (s + 1) / steps)
+                        cx, cy, R, start + 30.0 * (s + 1) / steps, offset)
                     # Triangle uses the standard vPosition vertex format that
                     # Kivy's default shader understands, so a plain Color
                     # instruction tints it. (A raw Mesh would need an explicit
@@ -354,9 +467,13 @@ class ChartWheel(Widget):
             Color(0.20, 0.20, 0.24, 1)
             Line(circle=(cx, cy, R), width=1.2)
             Line(circle=(cx, cy, lay["r_in"]), width=1.2)
+            if lay["overlay"]:
+                # Thin separator between the natal and outer rings.
+                Color(0.24, 0.25, 0.30, 1)
+                Line(circle=(cx, cy, lay["r_overlay"]), width=0.8)
             for d in range(0, 360, 10):
-                x1, y1 = point_on_circle(cx, cy, R, d)
-                x2, y2 = point_on_circle(cx, cy, lay["r_in"], d)
+                x1, y1 = point_on_circle(cx, cy, R, d, offset)
+                x2, y2 = point_on_circle(cx, cy, lay["r_in"], d, offset)
                 Line(points=[x1, y1, x2, y2], width=0.7)
 
             # 3) House cusp lines.
@@ -370,23 +487,41 @@ class ChartWheel(Widget):
                 Line(points=[ang["x1"], ang["y1"], ang["x2"], ang["y2"]],
                      width=1.8)
 
-            # 5) Aspect lines.
+            # 5) Aspect lines (natal-natal, then transit-to-natal).
             for i, a in enumerate(lay["aspects"]):
                 asp = a["aspect"]
                 col = ASPECT_COLORS.get(asp.type_name, MINOR_ASPECT_COLOR)
                 Color(col[0], col[1], col[2], 1)
                 Line(points=[a["x1"], a["y1"], a["x2"], a["y2"]],
                      width=2.4 if self._sel_aspect == i else 1.1)
+            for a in lay["t_aspects"]:
+                asp = a["aspect"]
+                col = ASPECT_COLORS.get(asp.type_name, MINOR_ASPECT_COLOR)
+                Color(col[0], col[1], col[2], 1)
+                Line(points=[a["x1"], a["y1"], a["x2"], a["y2"]], width=1.0)
 
             # 6) Planet ticks + glyph circles.
             for p in lay["planets"]:
-                x1, y1 = point_on_circle(cx, cy, lay["r_in"], p["lon"])
-                x2, y2 = point_on_circle(cx, cy, R * 0.70, p["lon"])
+                x1, y1 = point_on_circle(cx, cy, lay["r_in"], p["lon"], offset)
+                x2, y2 = point_on_circle(cx, cy, R * 0.70, p["lon"], offset)
                 Color(0.30, 0.30, 0.36, 1)
                 Line(points=[x1, y1, x2, y2], width=1)
                 Color(PLANET_COLOR[0], PLANET_COLOR[1], PLANET_COLOR[2], 1)
                 Ellipse(pos=(p["x"] - 13, p["y"] - 13), size=(26, 26))
                 if self._sel_planet == p["name"]:
+                    Color(SELECT_COLOR[0], SELECT_COLOR[1], SELECT_COLOR[2], 1)
+                    Line(circle=(p["x"], p["y"], 17), width=2)
+
+            # 6b) Outer-ring (transit / progressed) planet markers.
+            for p in lay["overlay"]:
+                x1, y1 = point_on_circle(cx, cy, lay["r_in"], p["lon"], offset)
+                x2, y2 = point_on_circle(cx, cy, R * 0.81, p["lon"], offset)
+                Color(0.30, 0.30, 0.36, 1)
+                Line(points=[x1, y1, x2, y2], width=1)
+                Color(OVERLAY_PLANET_COLOR[0], OVERLAY_PLANET_COLOR[1],
+                      OVERLAY_PLANET_COLOR[2], 1)
+                Ellipse(pos=(p["x"] - 13, p["y"] - 13), size=(26, 26))
+                if self._sel_overlay == p["name"]:
                     Color(SELECT_COLOR[0], SELECT_COLOR[1], SELECT_COLOR[2], 1)
                     Line(circle=(p["x"], p["y"], 17), width=2)
 
@@ -414,6 +549,11 @@ class ChartWheel(Widget):
                      (ang["x1"] + ang["x2"]) / 2, (ang["y1"] + ang["y2"]) / 2,
                      10, (0.90, 0.91, 0.96, 1))
             for p in lay["planets"]:
+                blit(p["glyph"] if astro_font else p["abbr"],
+                     p["x"], p["y"], 14, (1, 1, 1, 1), astro=True)
+                if p["retro"]:
+                    blit("R", p["x"], p["y"] - 16, 8, (1, 0.55, 0.4, 1))
+            for p in lay["overlay"]:
                 blit(p["glyph"] if astro_font else p["abbr"],
                      p["x"], p["y"], 14, (1, 1, 1, 1), astro=True)
                 if p["retro"]:
@@ -452,12 +592,24 @@ class ChartWheel(Widget):
     def _handle_tap(self, px: float, py: float) -> bool:
         """Hit-test a tap; select planet / sign / aspect, dispatch, redraw."""
         lay = self._layout
-        # 1) planet glyphs (16 px around each centre)
+        # 1) outer-ring (transit) planet glyphs — dispatched with a
+        #    "(transit)" name suffix so the screen can show transit text.
+        for p in lay["overlay"]:
+            if math.hypot(px - p["x"], py - p["y"]) <= 16:
+                self._sel_overlay = p["name"]
+                self._sel_planet = None
+                self._sel_sign = None
+                self._sel_aspect = None
+                self._redraw()
+                self.dispatch("on_planet_selected", p["name"])
+                return True
+        # 2) planet glyphs (16 px around each centre)
         for p in lay["planets"]:
             if math.hypot(px - p["x"], py - p["y"]) <= 16:
                 self._sel_planet = p["name"]
                 self._sel_sign = None
                 self._sel_aspect = None
+                self._sel_overlay = None
                 self._redraw()
                 self.dispatch("on_planet_selected", p["name"])
                 return True
@@ -467,24 +619,28 @@ class ChartWheel(Widget):
                 self._sel_aspect = i
                 self._sel_planet = None
                 self._sel_sign = None
+                self._sel_overlay = None
                 self._redraw()
                 self.dispatch("on_aspect_selected", a["aspect"])
                 return True
         # 3) zodiac band (between the inner ring and the rim) -> sign wedge.
-        #    Screen angle is radians(180 + lon), so invert: lon = deg - 180.
+        #    Screen angle is radians(180 + lon - offset), so invert:
+        #    lon = deg - 180 + offset.
         r = math.hypot(px - lay["cx"], py - lay["cy"])
         if lay["r_in"] < r <= lay["R"]:
             ang = math.degrees(math.atan2(py - lay["cy"], px - lay["cx"]))
-            lon = (ang - 180.0) % 360.0
+            lon = (ang - 180.0 + lay["offset"]) % 360.0
             sign = lay["signs"][int(lon // 30.0) % 12]
             self._sel_sign = sign["name"]
             self._sel_planet = None
             self._sel_aspect = None
+            self._sel_overlay = None
             self._redraw()
             self.dispatch("on_sign_selected", sign["name"])
             return True
         # 4) empty space -> clear selection
         if (self._sel_planet is not None or self._sel_aspect is not None
-                or self._sel_sign is not None):
+                or self._sel_sign is not None
+                or self._sel_overlay is not None):
             self.clear_selection()
         return False

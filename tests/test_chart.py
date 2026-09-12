@@ -10,6 +10,7 @@ from datetime import datetime, timezone
 import pytest
 
 from core.chart import calculate_birth_chart, house_of_longitude
+from core.interpretation import chart_report, planet_detail_text
 from core.models import BirthData, Location
 
 
@@ -95,3 +96,26 @@ def test_house_of_longitude_wraps_at_0():
              210.0, 240.0, 270.0, 300.0, 330.0, 0.0]
     assert house_of_longitude(350, cusps) == 11
     assert house_of_longitude(10, cusps) == 12
+
+
+def test_chart_report_explains_house_references():
+    chart = calculate_birth_chart(_make_birth())
+    report = chart_report(chart)
+
+    assert "H1  " in report
+    assert "self, identity and how you meet the world" in report
+    assert "partnerships and one-to-one relationships" in report
+
+    sun = next(p for p in chart.positions if p.name == "Sun")
+    assert sun.house is not None
+    assert f"house {sun.house:>2} (" in report
+
+
+def test_planet_detail_explains_planets_house():
+    chart = calculate_birth_chart(_make_birth())
+    sun = next(p for p in chart.positions if p.name == "Sun")
+
+    detail = planet_detail_text(chart, "Sun")
+
+    assert sun.house is not None
+    assert f"house {sun.house} (" in detail

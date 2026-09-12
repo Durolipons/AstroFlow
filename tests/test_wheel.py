@@ -47,6 +47,21 @@ def test_point_on_circle_cancer_bottom():
     assert y == pytest.approx(50)   # below centre
 
 
+def test_lon_to_angle_ascendant_offset():
+    """With the Ascendant anchor the chart's own ASC sits at 9 o'clock."""
+    asc = 249.1276
+    assert lon_to_angle(asc, offset=asc) == pytest.approx(math.pi)
+    # Other longitudes keep their true angular distance from the Ascendant.
+    assert lon_to_angle(asc + 30.0, offset=asc) == pytest.approx(
+        math.pi + math.radians(30.0))
+
+
+def test_point_on_circle_ascendant_left():
+    x, y = point_on_circle(100, 100, 50, 249.1276, offset=249.1276)
+    assert x == pytest.approx(50)   # left of centre
+    assert y == pytest.approx(100)
+
+
 def test_seg_distance_basics():
     # On the segment -> 0.
     assert seg_distance(5, 5, 0, 0, 10, 10) == pytest.approx(0.0, abs=1e-9)
@@ -127,6 +142,40 @@ def test_wheel_layout_prepared(wheel_and_chart):
     assert len(lay["aspects"]) > 0
 
 
+def test_natal_wheel_anchors_on_ascendant(wheel_and_chart):
+    """The natal wheel draws the chart's own Ascendant at 9 o'clock.
+
+    This is the standard natal-chart orientation (astro.com and every
+    professional program): the ASC axis is horizontal on the left, and the
+    rotation comes from each chart's own angles["Ascendant"] — no
+    chart-specific value anywhere.
+    """
+    sm, chart_scr, wheel = wheel_and_chart
+    chart = wheel.chart
+    lay = wheel._layout
+    assert lay["offset"] == pytest.approx(chart.angles["Ascendant"])
+
+    asc = next(a for a in lay["angles"] if a["name"] == "Ascendant")
+    mx = (asc["x1"] + asc["x2"]) / 2
+    my = (asc["y1"] + asc["y2"]) / 2
+    assert mx < lay["cx"]                           # left half
+    assert my == pytest.approx(lay["cy"], abs=0.5)  # horizontal ASC axis
+
+    # The Midheaven rises toward the top of the wheel.
+    mc = next(a for a in lay["angles"] if a["name"] == "MC")
+    assert max(mc["y1"], mc["y2"]) > lay["cy"]
+
+    # The tap hit-test stays consistent with the rotated geometry: tapping
+    # a sign label still selects that sign.
+    hits = []
+    wheel.bind(on_sign_selected=lambda w, name: hits.append(name))
+    for sign in lay["signs"]:
+        del hits[:]
+        assert wheel._handle_tap(sign["x"], sign["y"]) is True
+        assert hits == [sign["name"]]
+        wheel.clear_selection()
+
+
 def test_planet_tap_dispatches(wheel_and_chart):
     sm, chart_scr, wheel = wheel_and_chart
     p0 = wheel._layout["planets"][0]
@@ -168,3 +217,62 @@ def test_tapping_empty_space_clears_selection(wheel_and_chart):
     cx, cy = wheel._layout["cx"], wheel._layout["cy"]
     wheel._handle_tap(cx, cy)
     assert wheel._sel_planet is None
+
+# ---------------------------------------------------------------------------
+# Bi-wheel overlay (transits / progressions on an outer ring)
+# ---------------------------------------------------------------------------
+def test_overlay_layout_and_tap(wheel_and_chart):
+    """set_overlay draws an outer ring; taps dispatch '(transit)' names."""
+    sm, chart_scr, wheel = wheel_and_chart
+    from core.transits import transits_to_natal
+
+    bd = BirthData(
+        name="T",
+        birth_datetime=datetime(2000, 1, 1, 12, 0, tzinfo=timezone.utc),
+        location=Location(latitude=51.5, longitude=-0.1),
+    )
+    fc = transits_to_natal(bd, datetime(2026, 1, 1, tzinfo=timezone.utc))
+    wheel.set_overlay(fc.transit_chart, fc.aspects)
+    lay = wheel._layout
+    assert len(lay["overlay"]) == len(fc.transit_chart.positions)
+    assert all(p["name"].endswith("(transit)") for p in lay["overlay"])
+    # Outer-ring glyphs sit between the natal ring (0.64R) and the
+    # zodiac band (0.86R).
+    assert lay["R"] * 0.70 < lay["r_overlay"] < lay["R"] * 0.86
+    assert lay["t_aspects"], "expected transit-to-natal aspect lines"
+
+    # Tapping an outer-ring planet dispatches with the (transit) suffix.
+    fired = []
+    wheel.bind(on_planet_selected=lambda w, n: fired.append(n))
+    p = lay["overlay"][0]
+    assert wheel._handle_tap(p["x"], p["y"]) is True
+    assert fired == [p["name"]]
+    assert wheel._sel_overlay == p["name"]
+
+    # N prerequisite for later tests: restore the plain natal wheel.
+    wheel.clear_overlay()
+    assert wheel._layout["overlay"] == []
+    assert wheel._layout["t_aspects"] == []
+
+
+def test_overlay_custom_suffix(wheel_and_chart):
+    """Progression/arc overlays label planets with their own suffix."""
+    sm, chart_scr, wheel = wheel_and_chart
+    from core.transits import transits_to_natal
+
+    bd = BirthData(
+        name="T",
+        birth_datetime=datetime(2000, 1, 1, 12, 0, tzinfo=timezone.utc),
+        location=Location(latitude=51.5, longitude=-0.1),
+    )
+    fc = transits_to_natal(bd, datetime(2026, 1, 1, tzinfo=timezone.utc))
+    from core.aspects import find_aspects_between_charts
+    pa = find_aspects_between_charts(
+        fc.transit_chart.positions, fc.birth_chart.positions, suffix="prog")
+    wheel.set_overlay(fc.transit_chart, pa, suffix="prog")
+    lay = wheel._layout
+    assert lay["overlay"]
+    assert all(p["name"].endswith("(prog)") for p in lay["overlay"])
+    assert wheel._layout["t_aspects"], "prog-to-natal lines expected"
+    wheel.clear_overlay()
+    assert wheel._layout["overlay"] == []

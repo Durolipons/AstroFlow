@@ -2,7 +2,8 @@
 
 Run this from the project root::
 
- python run_app.py
+python run_app.py
+ 
    
 
 It simply hands control to ``ui.main.AstroFlowApp``.

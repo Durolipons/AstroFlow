@@ -32,11 +32,46 @@ _CATEGORY_LABELS = {
     "sun_moon": "Sun / Moon blend",
     "aspect_pair": "Planet-pair aspect",
     "angle_sign": "Angle in sign",
-    "planet_sign_retro": "Retrograde note",
+    "planet_sign_retro": "Retrograde by sign",
+    "house_ruler": "House ruler",
+    # --- Full-chart poetic synthesis ---
+    "synthesis_section_headings": "Synthesis section headings",
+    "synthesis_narrative_bridges": "Synthesis narrative bridges",
+    "planetary_archetypal_imagery": "Planetary archetypal imagery",
+    "synthesis_strengths": "Synthesis strengths",
+    "synthesis_growth_language": "Synthesis growth language",
+    "forecast_synthesis": "Forecast synthesis",
+    "synthesis_conclusions": "Synthesis conclusions",
     # --- Astro-Clock forecast libraries ---
     "forecast_ingress": "Forecast ingress",
     "forecast_station": "Forecast station",
     "forecast_phase": "Forecast lunation",
+    "sign_forecast": "Sign forecasts",
+    "forecast_planet_in_sign": "Forecast planet in sign",
+    "forecast_sign_aspect": "Forecast sign aspect",
+    "forecast_lunation_in_sign": "Lunation in sign",
+    "forecast_lunation_area": "Lunation life area",
+    "forecast_retrograde": "Forecast retrograde",
+    "transit_natal": "Transit to natal",
+    "eclipse_layer": "Eclipse context",
+    # --- Forecast narrative wording ---
+    "forecast_period_intro": "Forecast period introductions",
+    "forecast_transition": "Forecast transitions",
+    "forecast_invitation": "Forecast practical invitations",
+    "forecast_quiet": "Forecast quiet periods",
+    # --- Elemental & Modal analysis ---
+    "element_keywords": "Element keywords",
+    "element_balance": "Element balance",
+    "modality_balance": "Modality balance",
+    # --- Vedic astrology ---
+    "nakshatra_text": "Nakshatra descriptions",
+    "dasha_text": "Dasha periods",
+    "vedic_glossary": "Vedic glossary (plain English)",
+    "planet_dosha": "Planet doshas (Ayurveda)",
+    # --- Chinese astrology ---
+    "chinese_zodiac": "Chinese zodiac animals",
+    "chinese_element": "Chinese elements",
+    "yin_yang": "Yin-Yang polarities",
 }
 _LABEL_TO_CATEGORY = {label: key for key, label in _CATEGORY_LABELS.items()}
 _CATEGORY_ORDER = tuple(_CATEGORY_LABELS.keys())

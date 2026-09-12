@@ -9,6 +9,7 @@ Public entry points for consumers:
     core.chart          -- birth chart calculation
     core.chart_store    -- JSON-backed saved-birth-chart database
     core.progressions   -- secondary progressions + solar arc directions
+    core.synthesis      -- structured whole-chart and forecast synthesis
     core.transits       -- transit positions + aspects to the natal chart
     core.aspects        -- generic aspect detection
     core.interpretation -- plain-text report generation
@@ -25,6 +26,7 @@ from . import (
     interpretation_store,
     models,
     progressions,
+    synthesis,
     transits,
     utils,
 )
@@ -39,6 +41,7 @@ __all__ = [
     "interpretation_store",
     "models",
     "progressions",
+    "synthesis",
     "transits",
     "utils",
 ]

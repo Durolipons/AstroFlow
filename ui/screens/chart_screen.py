@@ -83,7 +83,21 @@ class ChartScreen(Screen):
     def go_to_forecast(self):
         forecast = self.manager.get_screen("forecast")
         forecast.set_birth_data(self._birth_data)
+        forecast.generate_forecast()
         self.manager.current = "forecast"
+
+    def go_to_vedic(self):
+        """Switch to Vedic chart view."""
+        vedic = self.manager.get_screen("vedic")
+        vedic.set_birth_data(self._birth_data)
+        vedic.calculate_and_show()
+        self.manager.current = "vedic"
+
+    def go_to_chinese(self):
+        """Switch to Chinese chart view."""
+        chinese = self.manager.get_screen("chinese")
+        chinese.set_birth_data(self._birth_data)
+        self.manager.current = "chinese"
 
     def go_home(self):
         self.manager.current = "home"

@@ -217,10 +217,15 @@ class SquareWheelHost(AnchorLayout):
         kwargs.setdefault("anchor_y", "center")
         super().__init__(**kwargs)
         with self.canvas.before:
-            Color(0.05, 0.06, 0.08, 1)
+            self._bg_color = Color(0.05, 0.06, 0.08, 1)
             self._bg = RoundedRectangle(pos=self.pos, size=self.size, radius=[12])
         self.bind(size=self._sync_wheel, pos=self._sync_wheel)
         self.bind(size=self._sync_bg, pos=self._sync_bg)
+        # Widget.opacity only affects the main canvas group, never
+        # canvas.before -- without this, ``opacity: 0`` still paints the dark
+        # backdrop over whatever sits underneath (e.g. the Vedic chart hidden
+        # behind the wheel overlay).
+        self.bind(opacity=self._sync_bg_alpha)
 
     def on_kv_post(self, base_widget):
         self._sync_wheel()
@@ -228,6 +233,9 @@ class SquareWheelHost(AnchorLayout):
     def _sync_bg(self, *_args):
         self._bg.pos = self.pos
         self._bg.size = self.size
+
+    def _sync_bg_alpha(self, *_args):
+        self._bg_color.rgba = (0.05, 0.06, 0.08, self.opacity)
 
     def _sync_wheel(self, *_args):
         wheel = self.wheel
