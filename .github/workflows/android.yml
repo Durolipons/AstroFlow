@@ -26,12 +26,16 @@ jobs:
 
       - name: Install system build dependencies
         run: |
-          sudo apt-get update
-          sudo apt-get install -y --no-install-recommends \
+          sudo apt-get update -y
+          sudo apt-get install -y --fix-missing \
             git zip unzip python3-pip \
             autoconf libtool pkg-config zlib1g-dev \
-            libncurses5-dev libncursesw5-dev libtinfo5 \
-            cmake libffi-dev libssl-dev automake
+            libncurses-dev libtinfo-dev \
+            cmake libffi-dev libssl-dev automake \
+            libglew-dev libsdl2-dev libsdl2-image-dev \
+            libsdl2-mixer-dev libsdl2-ttf-dev \
+            libmtdev-dev libswscale-dev libavformat-dev \
+            libavdevice-dev libportmidi-dev libfreetype6-dev || true
 
       - name: Install buildozer
         run: |
