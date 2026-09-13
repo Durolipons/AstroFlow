@@ -7,7 +7,7 @@ source.dir = .
 source.include_exts = py,kv,json,jpg,png,txt,ttf,pdf,html
 source.exclude_dirs = tests,Reference,docs,.venv,__pycache__,.git,scripts,.pytest_cache,recipes
 version = 0.1.0
-requirements = python3,kivy==2.3.1,pyswisseph,astropy,astroquery,jplephem
+requirements = python3,kivy==2.3.1,pyswisseph
 orientation = portrait
 fullscreen = 0
 
