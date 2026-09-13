@@ -42,14 +42,31 @@ jobs:
           pip3 install buildozer cython virtualenv
 
       - name: Build debug APK
+        continue-on-error: true
         run: |
-          buildozer -v android debug
+          buildozer -v android debug 2>&1 | tee build.log
+          echo "BUILDOZER_EXIT=${PIPESTATUS[0]}" >> $GITHUB_ENV
+
+      - name: Upload build log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-log
+          path: build.log
 
       - name: Upload APK artifact
+        if: env.BUILDOZER_EXIT == '0'
         uses: actions/upload-artifact@v4
         with:
           name: astroflow-debug-apk
           path: ./bin/*.apk
           if-no-files-found: error
+
+      - name: Fail if build failed
+        if: env.BUILDOZER_EXIT != '0'
+        run: |
+          echo "Build failed with exit code $BUILDOZER_EXIT"
+          tail -100 build.log
+          exit 1
 
 
