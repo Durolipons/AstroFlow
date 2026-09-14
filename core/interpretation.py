@@ -28,6 +28,10 @@ from .interpretation_store import (
     _default_planet_sign_text,
     _default_sign_text,
     _default_sun_moon_text,
+    _default_synastry_aspect_text,
+    _default_synastry_house_text,
+    _default_synastry_element_text,
+    _default_synastry_score_text,
     _house_ruler_sentence,
     load_interpretation_library,
     previous_default_aspect_pair_value,
@@ -35,10 +39,58 @@ from .interpretation_store import (
     previous_default_sun_moon_value,
     sign_ruler,
 )
+from . import synastry as Syn
 from .forecast import EclipsePeriod, SignHoroscope
 
 # ASCII-art / unicode separators -------------------------------------------------
 RULE = "-" * 64
+
+# Kivy markup helpers for color-coded reports ----------------------------------
+# Reports are rendered in a Label (markup: True), so these wrap text in
+# [color=hex]...[/color] and [b]...[/b] tags using CATEGORY_COLORS keys.
+
+
+def _color(text: str, category: str) -> str:
+    """Wrap *text* in a Kivy markup color tag for the given category."""
+    hex_code = C.CATEGORY_COLORS.get(category, C.CATEGORY_COLORS["body_text"])
+    return f"[color={hex_code}]{text}[/color]"
+
+
+def _color_hex(text: str, hex_code: str) -> str:
+    """Wrap *text* in a Kivy markup color tag using a literal hex code."""
+    return f"[color={hex_code}]{text}[/color]"
+
+
+def _bold(text: str) -> str:
+    """Wrap *text* in Kivy markup bold tags."""
+    return f"[b]{text}[/b]"
+
+
+def _rule_line() -> str:
+    """Return a dim rule line for visual separation."""
+    return _color("-" * 64, "section_rule")
+
+
+def _hex_to_rgba(hex_str: str) -> tuple:
+    """Convert a hex color string (e.g. ``'FFD700'``) to an RGBA tuple for Kivy canvas."""
+    h = hex_str.lstrip("#")
+    if len(h) != 6:
+        h = "FFFFFF"
+    return (int(h[0:2], 16) / 255.0,
+            int(h[2:4], 16) / 255.0,
+            int(h[4:6], 16) / 255.0,
+            1.0)
+
+
+def _category_span(text: str, category: str) -> str:
+    """Wrap *text* in both a ``[ref]`` tag (for click-to-navigate) and a
+    color tag.  When the user taps the span in the report Label, Kivy fires
+    ``on_ref_press`` with *category* as the ref name, which the screen
+    uses to jump to the matching entry in the Interpretation editor.
+    """
+    if not category or category not in C.CATEGORY_COLORS:
+        return text
+    return f"[ref={category}]{_color(text, category)}[/ref]"
 
 
 _DEFAULT_ASPECT_VERB = "brings influence between two energies"
@@ -474,9 +526,10 @@ def chart_report(chart: Chart) -> str:
     """Full human-readable dump of any Chart (natal/progressed/directed)."""
     bd = chart.birth_data
     lines: List[str] = [
-        RULE,
-        f"* ASTROFLOW {chart.chart_type.upper()} *",
-        RULE,
+        _rule_line(),
+        _category_span(_bold(f"* ASTROFLOW {chart.chart_type.upper()} *"),
+                       "synthesis_section_headings"),
+        _rule_line(),
         f"Name        : {bd.name or '(unnamed)'}",
         f"Born (local): {bd.birth_datetime:%Y-%m-%d %H:%M}",
         f"Location    : {bd.location.latitude:+.4f}, {bd.location.longitude:+.4f} "
@@ -487,31 +540,34 @@ def chart_report(chart: Chart) -> str:
         f"Ayanamsa    : {chart.ayanamsa:9.4f} deg"
         if chart.sidereal else "Ayanamsa    : 0.0 (tropical)",
         "",
-        "PLANETS",
-        RULE,
+        _category_span(_bold("PLANETS"), "planet_role"),
+        _rule_line(),
     ]
-    lines.extend(planet_line(p) for p in chart.positions)
+    lines.extend(_category_span(planet_line(p), "planet_sign") for p in chart.positions)
 
-    lines += ["", "ANGLES", RULE]
-    lines.extend(angle_line(name, lon) for name, lon in chart.angles.items())
+    lines += ["", _category_span(_bold("ANGLES"), "angle_sign"), _rule_line()]
+    lines.extend(_category_span(angle_line(name, lon), "angle_sign")
+                 for name, lon in chart.angles.items())
 
-    lines += ["", "HOUSES", RULE]
+    lines += ["", _category_span(_bold("HOUSES"), "house_ruler"), _rule_line()]
     for h in chart.houses:
         meaning = C.WESTERN_HOUSE_SIGNIFICATIONS.get(h.number, "")
         description = f" - {meaning}" if meaning else ""
         lines.append(
-            f"H{h.number:<3} {utils.format_longitude(h.longitude)}{description}"
+            _category_span(f"H{h.number:<3} {utils.format_longitude(h.longitude)}{description}",
+                           "house_ruler")
         )
 
-    lines += ["", "ASPECTS", RULE]
+    lines += ["", _category_span(_bold("ASPECTS"), "aspect_pair"), _rule_line()]
     if chart.aspects:
-        lines.extend(aspect_line(a) for a in chart.aspects)
+        lines.extend(_category_span(aspect_line(a), "aspect_pair") for a in chart.aspects)
     else:
-        lines.append("(none within configured orbs)")
+        lines.append(_color("(none within configured orbs)", "body_text"))
 
     if chart.notes:
-        lines += ["", "NOTES", RULE]
-        lines.extend(f"- {n}" for n in chart.notes)
+        lines += ["", _category_span(_bold("NOTES"), "synthesis_section_headings"),
+                  _rule_line()]
+        lines.extend(_color(f"- {n}", "body_text") for n in chart.notes)
     return "\n".join(lines)
 
 
@@ -750,7 +806,7 @@ def birth_interpretation(chart: Chart) -> str:
         blend_key = f"Sun {sun.sign} · Moon {moon.sign}"
         blend = lib.sun_moon.get(blend_key, "")
         if blend:
-            lines += [blend, ""]
+            lines += [_category_span(blend, "sun_moon"), ""]
 
     # --- Angle placements ---
     angle_lines: List[str] = []
@@ -758,7 +814,7 @@ def birth_interpretation(chart: Chart) -> str:
         lon = chart.angles.get(angle_name)
         if lon is not None:
             sign = utils.sign_of(lon)
-            angle_lines.append(_angle_sign_text(angle_name, sign))
+            angle_lines.append(_category_span(_angle_sign_text(angle_name, sign), "angle_sign"))
     if angle_lines:
         lines += angle_lines + [""]
 
@@ -766,28 +822,32 @@ def birth_interpretation(chart: Chart) -> str:
     retro_planets = [p.name for p in chart.positions
                      if p.motion == "retrograde"]
     n_retro = len(retro_planets)
-    lines += ["", "RETROGRADE SUMMARY", ""]
+    lines += ["", _category_span(_bold("RETROGRADE SUMMARY"),
+                                 "synthesis_section_headings"), ""]
     if n_retro == 0:
-        lines.append(
+        lines.append(_color(
             "No natal planets are retrograde - energies tend to express "
-            "outwardly and life skills develop through direct experience.")
+            "outwardly and life skills develop through direct experience.",
+            "body_text"))
     elif n_retro >= 4:
-        lines.append(
+        lines.append(_color(
             f"{n_retro} retrograde planets ({', '.join(retro_planets)}) - "
             "a complex, reflective nature that turns inward and forges its "
-            "own path, sometimes feeling alienated from the mainstream.")
+            "own path, sometimes feeling alienated from the mainstream.",
+            "body_text"))
     else:
-        lines.append(
+        lines.append(_color(
             f"{n_retro} retrograde planet(s) ({', '.join(retro_planets)}) - "
             "those functions turn inward, possessing extraordinary depth and "
-            "independence though they may lack confidence in themselves.")
+            "independence though they may lack confidence in themselves.",
+            "body_text"))
 
     # --- Planet placements ---
     for pos in chart.positions:
         parts: List[str] = []
-        placement = _planet_sign_text(pos.name, pos.sign)
-        house_txt = _planet_house_text(pos.name, pos.house)
-        retro = _retrograde_note(pos.name, pos.sign) if pos.motion == "retrograde" else ""
+        placement = _category_span(_planet_sign_text(pos.name, pos.sign), "planet_sign")
+        house_txt = _category_span(_planet_house_text(pos.name, pos.house), "planet_house") if pos.house else ""
+        retro = _category_span(_retrograde_note(pos.name, pos.sign), "planet_sign_retro") if pos.motion == "retrograde" else ""
         parts.append(placement)
         if house_txt:
             parts.append(house_txt)
@@ -798,16 +858,20 @@ def birth_interpretation(chart: Chart) -> str:
     # --- House rulers ---
     ruler_lines = house_rulers(chart)
     if ruler_lines:
-        lines += ["", "HOUSE RULERS", ""]
-        lines.extend(ruler_lines)
+        lines += ["", _category_span(_bold("HOUSE RULERS"),
+                                     "synthesis_section_headings"), ""]
+        lines.extend(_category_span(rl, "house_ruler") for rl in ruler_lines)
 
     # --- Aspects ---
     if chart.aspects:
-        lines += ["", "ASPECTS", ""]
+        lines += ["", _category_span(_bold("ASPECTS"),
+                                     "synthesis_section_headings"), ""]
         for asp in chart.aspects:
             pair = _aspect_pair_text(asp.planet1_name, asp.planet2_name, asp.type_name)
-            lines.append(f"{asp.planet1_name} {asp.symbol} {asp.planet2_name} "
-                         f"({asp.kind} orb {abs(asp.orb):.2f}°): {pair}")
+            lines.append(_category_span(
+                f"{asp.planet1_name} {asp.symbol} {asp.planet2_name} "
+                f"({asp.kind} orb {abs(asp.orb):.2f}°): {pair}",
+                "aspect_pair"))
 
     return "\n".join(lines)
 
@@ -1628,10 +1692,10 @@ def _technical_forecast_report_body(
         "",
         progression_interpretation(prog),
         "",
-        "=" * 64,
+        _rule_line(),
         solar_arc_interpretation(arc),
         "",
-        "=" * 64,
+        _rule_line(),
         chart_report(transit.transit_chart),
         "",
         transit_interpretation(transit),
@@ -1661,9 +1725,10 @@ def full_forecast_report(
                 transit=transit,
             ),
             "",
-            "=" * 64,
-            "* PERSONAL FORECAST DETAILS *",
-            "=" * 64,
+            _rule_line(),
+            _color(_bold("* PERSONAL FORECAST DETAILS *"),
+                   "synthesis_section_headings"),
+            _rule_line(),
             "",
         ])
     else:
@@ -1686,22 +1751,24 @@ def planet_detail_text(chart: Chart, planet_name: str) -> str:
     house_text = C.WESTERN_HOUSE_SIGNIFICATIONS.get(pos.house, "")
     house_description = f" ({house_text})" if house_text else ""
     lines = [
-        f"{pos.name.upper()}",
-        f"{utils.format_longitude(pos.longitude)} — "
-        f"house {house}{house_description} — {pos.motion}",
+        _category_span(_bold(pos.name.upper()), "planet_role"),
+        _category_span(f"{utils.format_longitude(pos.longitude)} — "
+                       f"house {house}{house_description} — {pos.motion}",
+                       "planet_house"),
     ]
     role = _planet_role(pos.name)
     if role:
-        lines += ["", f"Theme: {role}."]
+        lines += ["", _category_span(f"Theme: {role}.", "planet_role")]
 
     mine = [a for a in chart.aspects
             if pos.name in (a.planet1_name, a.planet2_name)]
     if mine:
-        lines += ["", "Aspects made by this planet:"]
+        lines += ["", _category_span("Aspects made by this planet:", "aspect_text")]
         for a in mine:
-            lines.append("  " + interpret_aspect(a).replace("\n", "\n  "))
+            lines.append(_category_span("  " + interpret_aspect(a).replace("\n", "\n  "),
+                                        "aspect_pair"))
     else:
-        lines += ["", "No aspects within the default orbs."]
+        lines += ["", _color("No aspects within the default orbs.", "body_text")]
     return "\n".join(lines)
 
 
@@ -1709,7 +1776,7 @@ def aspect_detail_text(aspect: Aspect) -> str:
     """Interpretive text for one aspect (for the chart wheel)."""
     p1, p2 = aspect.planet1_name, aspect.planet2_name
     lines = [
-        f"{p1} {aspect.type_name} {p2}",
+        _category_span(_bold(f"{p1} {aspect.type_name} {p2}"), "aspect_text"),
         f"exact angle {aspect.angle:.0f}\u00b0 — orb {abs(aspect.orb):.2f}\u00b0 ({aspect.kind})",
     ]
     roles = [f"{n}: {_planet_role(n)}" for n in (p1, p2) if _planet_role(n)]
@@ -1789,15 +1856,174 @@ def transit_planet_detail(chart: Chart, planet_name: str,
         return f"No planet named {planet_name!r} in the transit sky."
 
     lines = [
-        f"{pos.name.upper()} — transiting",
-        f"{utils.format_longitude(pos.longitude)} — {pos.sign} — {pos.motion}",
+        _category_span(_bold(f"{pos.name.upper()} — transiting"), "planet_role"),
+        _category_span(f"{utils.format_longitude(pos.longitude)} — {pos.sign} — {pos.motion}",
+                       "planet_sign"),
     ]
     role = _planet_role(pos.name)
     if role:
-        lines += ["", f"Transiting theme: {role}."]
+        lines += ["", _category_span(f"Transiting theme: {role}.", "planet_role")]
     note = _library().planet_sky_note.get(pos.name)
     if note:
         lines.append(f"Right now: {note}.")
+
+    # --- Contacts with the natal chart (tightest first) ---
+    aspects = sorted(natal_aspects or [], key=lambda a: abs(a.orb))
+    if aspects:
+        lib = _library()
+        t_name = pos.name.replace(" (transit)", "").strip()
+        lines += ["", _category_span(_bold(f"NATAL CONTACTS ({len(aspects)})"),
+                                     "aspect_text"), _rule_line()]
+        for asp in aspects[:12]:
+            lines.append(_category_span(
+                f"{asp.planet1_name} {asp.type_name} {asp.planet2_name} "
+                f"(orb {abs(asp.orb):.2f}\u00b0, {asp.kind})",
+                "aspect_pair"))
+            t_note = lib.transit_natal.get(
+                f"{t_name} {asp.type_name} natal {asp.planet2_name}")
+            if t_note:
+                lines.append(_color(f"    {t_note}", "body_text"))
+
+    return "\n".join(lines)
+
+
+# ---------------------------------------------------------------------------
+# Synastry (relationship compatibility) report
+# ---------------------------------------------------------------------------
+
+def full_synastry_report(birth_a, birth_b, ephe=None) -> str:
+    """Full compatibility report for two birth records.
+
+    Renders a SynastryResult (computed by ``core.synastry``) into a
+    human-readable cross-chart report using the editable synastry libraries.
+
+    Args:
+        birth_a: First partner's BirthData.
+        birth_b: Second partner's BirthData.
+        ephe:    Optional shared Ephemeris instance.
+
+    Returns:
+        Multi-line string with header, cross-aspects, house overlays,
+        elemental chemistry, and overall verdict.
+    """
+    lib = _library()
+    result = Syn.compute_synastry(birth_a, birth_b, ephe=ephe)
+    name_a = result.name_a
+    name_b = result.name_b
+
+    lines: List[str] = [
+        RULE,
+        f"* ASTROFLOW SYNASTRY COMPATIBILITY REPORT *",
+        RULE,
+        f"Person A : {name_a}",
+        f"Person B : {name_b}",
+        "",
+        f"OVERALL SCORE : {result.overall_score:.0f} / 100  —  {result.verdict}",
+        _score_band_note(lib, result.overall_score),
+        "",
+        "SCORE BREAKDOWN",
+        RULE,
+        f"  Harmony  : {result.breakdown.harmony:.2f}",
+        f"  Tension  : {result.breakdown.tension:.2f}",
+        f"  Chemistry: {result.breakdown.chemistry:.2f}",
+        f"  Net total: {result.breakdown.total:.2f}",
+    ]
+
+    # --- Cross-chart aspects (top 12 by tightness) ---
+    lines += ["", f"CROSS-CHART ASPECTS ({len(result.cross_aspects)} total, tightest shown)", RULE]
+    top_aspects = result.cross_aspects[:12]
+    if top_aspects:
+        for asp in top_aspects:
+            key = f"{asp.planet1_name} {asp.type_name} {asp.planet2_name}"
+            note = lib.synastry_aspect.get(key)
+            orb_str = f"{asp.orb:+6.2f}\u00b0"
+            lines.append(f"  {asp.planet1_name:<22} {asp.symbol} {asp.planet2_name:<18} "
+                         f"orb {orb_str}  {asp.kind}")
+            if note:
+                lines.append(f"      {note}")
+    else:
+        lines.append("  No cross-aspects within orb.")
+
+    # --- House overlays ---
+    lines += ["", f"HOUSE OVERLAYS — {name_a} planets in {name_b}'s houses", RULE]
+    if result.overlays_a_in_b:
+        for ov in result.overlays_a_in_b:
+            key = f"{ov.planet} (A) in house {ov.house} (B)"
+            note = lib.synastry_house.get(key)
+            sign_tag = f" [{ov.house_sign}]" if ov.house_sign else ""
+            lines.append(f"  {ov.planet:<10} -> house {ov.house:>2}{sign_tag}")
+            if note:
+                lines.append(f"      {note}")
+    else:
+        lines.append("  (none)")
+
+    lines += ["", f"HOUSE OVERLAYS — {name_b} planets in {name_a}'s houses", RULE]
+    if result.overlays_b_in_a:
+        for ov in result.overlays_b_in_a:
+            key = f"{ov.planet} (B) in house {ov.house} (A)"
+            note = lib.synastry_house.get(key)
+            sign_tag = f" [{ov.house_sign}]" if ov.house_sign else ""
+            lines.append(f"  {ov.planet:<10} -> house {ov.house:>2}{sign_tag}")
+            if note:
+                lines.append(f"      {note}")
+    else:
+        lines.append("  (none)")
+
+    # --- Elemental chemistry ---
+    lines += ["", "ELEMENTAL CHEMISTRY", RULE]
+    for el in ("Fire", "Earth", "Air", "Water"):
+        ca = result.element_counts_a.get(el, 0)
+        cb = result.element_counts_b.get(el, 0)
+        lines.append(f"  {el:<6}  A: {ca}   B: {cb}")
+    # Cross-element flavour
+    a_top = _top_element(result.element_counts_a)
+    b_top = _top_element(result.element_counts_b)
+    if a_top and b_top:
+        el_key = f"{a_top}-{b_top}"
+        el_note = lib.synastry_element.get(el_key)
+        if el_note:
+            lines += ["", f"  {el_note}"]
+
+    lines += ["", RULE, f"* End of synastry report for {name_a} & {name_b} *"]
+    return "\n".join(lines)
+
+
+def synastry_aspect_detail(result: 'Syn.SynastryResult', aspect_index: int) -> str:
+    """Detail text for one cross-aspect tapped in the center panel."""
+    if not (0 <= aspect_index < len(result.cross_aspects)):
+        return "No aspect at that index."
+    asp = result.cross_aspects[aspect_index]
+    lib = _library()
+    key = f"{asp.planet1_name} {asp.type_name} {asp.planet2_name}"
+    note = lib.synastry_aspect.get(key)
+    lines = [
+        f"{asp.planet1_name} {asp.type_name} {asp.planet2_name}",
+        f"orb {asp.orb:+.2f}\u00b0 ({asp.kind})",
+    ]
+    if note:
+        lines += ["", note]
+    return "\n".join(lines)
+
+
+def _score_band_note(lib: InterpretationLibrary, score: float) -> str:
+    """Return the score-band prose for the given numeric score."""
+    for band in ("80-100", "65-79", "50-64", "35-49", "0-34"):
+        lo = int(band.split("-")[0])
+        hi = int(band.split("-")[1])
+        if lo <= score <= hi:
+            note = lib.synastry_score.get(band)
+            if note:
+                return f"  -> {note}"
+    return ""
+
+
+def _top_element(counts: Dict[str, int]) -> str:
+    """Return the element with the highest count (first wins ties)."""
+    if not counts:
+        return ""
+    return max(counts, key=lambda k: counts[k])
+
+
     if _is_forecast_retrograde(pos):
         retro_note = _forecast_retrograde_note(pos.name, _library())
         lines.append(
@@ -1827,14 +2053,15 @@ def transit_aspect_detail(aspect: Aspect) -> str:
     """Detail text for one transit-to-natal aspect (bi-wheel line tap)."""
     t_name = aspect.planet1_name.replace(" (transit)", "").strip()
     lines = [
-        f"{aspect.planet1_name} {aspect.type_name} {aspect.planet2_name}",
+        _category_span(_bold(f"{aspect.planet1_name} {aspect.type_name} {aspect.planet2_name}"),
+                       "aspect_text"),
         f"exact angle {aspect.angle:.0f}\u00b0 — orb "
         f"{abs(aspect.orb):.2f}\u00b0 ({aspect.kind})",
     ]
     note = _library().transit_natal.get(
         f"{t_name} {aspect.type_name} natal {aspect.planet2_name}")
     if note:
-        lines += ["", note]
+        lines += ["", _color(note, "body_text")]
     return "\n".join(lines)
 
 
@@ -1877,30 +2104,31 @@ def sign_detail_text(chart: Chart, sign_name: str) -> str:
         return f"No zodiac sign named {sign_name!r}."
     element = C.ELEMENTS.get(sign_name, "")
     modality = C.MODALITIES.get(sign_name, "")
-    lines = [f"{sign_name.upper()} — natal chart",
-             f"{element} / {modality}"]
+    lines = [_category_span(_bold(f"{sign_name.upper()} — natal chart"), "sign_text"),
+             _category_span(f"{element} / {modality}", "element_keywords")]
     keywords = _library().sign_text.get(sign_name)
     if keywords:
-        lines.append(f"Keywords: {keywords}.")
+        lines.append(_category_span(f"Keywords: {keywords}.", "sign_text"))
 
     inside = [p for p in chart.positions if p.sign == sign_name]
     if inside:
-        lines += ["", f"Planets in {sign_name}:"]
+        lines += ["", _category_span(f"Planets in {sign_name}:", "planet_sign")]
         for p in inside:
             line = f"  {p.name} — {utils.format_longitude(p.longitude)}"
             role = _planet_role(p.name)
             if role:
                 line += f" ({role})"
-            lines.append(line)
+            lines.append(_category_span(line, "planet_sign"))
     else:
-        lines += ["", f"No natal planets in {sign_name}."]
+        lines += ["", _color(f"No natal planets in {sign_name}.", "body_text")]
 
     cusp_houses = [h.number for h in chart.houses
                    if utils.sign_of(h.longitude) == sign_name]
     if cusp_houses:
         names = ", ".join(f"{n}" for n in cusp_houses)
-        lines += ["", f"House cusp(s) in {sign_name}: {names} — the areas of "
-                      f"life where this sign's energy is focused."]
+        lines += ["", _category_span(f"House cusp(s) in {sign_name}: {names} — the areas of "
+                                     f"life where this sign's energy is focused.",
+                                     "house_ruler")]
     return "\n".join(lines)
 
 

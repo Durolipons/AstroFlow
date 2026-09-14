@@ -518,3 +518,27 @@ CHINESE_ZODIAC_COMPATIBILITY: Dict[str, List[str]] = {
 
 # Chinese Zodiac base year (1900 = Year of the Rat)
 CHINESE_ZODIAC_BASE_YEAR: int = 1900
+
+# ---------------------------------------------------------------------------
+# Category color scheme for chart-report markup
+# ---------------------------------------------------------------------------
+# Each interpretation-editor category maps to a hex color used in Kivy markup
+# ([color=hex]...[/color]). Chosen for readability on the dark UI background.
+CATEGORY_COLORS: Dict[str, str] = {
+    "sign_text": "FFD700",          # Sun sign keywords — gold
+    "aspect_text": "FF6961",        # Aspect keywords — salmon
+    "planet_role": "6CB4EE",        # Planet roles — sky blue
+    "planet_sign": "77DD77",        # Planet in sign — pastel green
+    "planet_house": "F4A460",       # Planet in house — sandy brown
+    "sun_moon": "FFD700",           # Sun / Moon blend — gold
+    "aspect_pair": "FF6961",        # Planet-pair aspect — salmon
+    "angle_sign": "DDA0DD",         # Angle in sign — plum
+    "house_ruler": "F4A460",        # House ruler — sandy brown
+    "planet_sign_retro": "B0C4DE",  # Retrograde by sign — light steel blue
+    "element_keywords": "87CEEB",    # Element keywords — light blue
+    "element_balance": "87CEEB",     # Element balance — light blue
+    "modality_balance": "D8BFD8",   # Modality balance — thistle
+    "synthesis_section_headings": "FFFFFF",  # Section headings — white
+    "section_rule": "606060",        # Rule lines — medium gray
+    "body_text": "E0E0E0",          # Body text — light gray
+}

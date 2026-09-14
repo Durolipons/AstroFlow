@@ -10,6 +10,8 @@ from __future__ import annotations
 from kivy.properties import ObjectProperty
 from kivy.uix.screenmanager import Screen
 
+from core.constants import CATEGORY_COLORS
+from core.interpretation import _hex_to_rgba
 from core.interpretation_store import (
     configure_interpretation_library,
     default_interpretation_library,
@@ -85,20 +87,38 @@ class InterpretationEditorScreen(Screen):
     key_input = ObjectProperty(None)
     value_input = ObjectProperty(None)
     status_label = ObjectProperty(None)
+    color_swatch = ObjectProperty(None)
 
     def __init__(self, **kwargs):
         self._library = None
         self._category = "sign_text"
         self._selected_key = ""
+        self._font_size: float = 14.0
+        self.return_screen = None  # set when jumping from a chart/forecast report
         super().__init__(**kwargs)
 
     def on_kv_post(self, base_widget):
         self._reload_library()
         self._sync_category_spinner()
         self._sync_entry_spinner()
+        self._update_color_swatch()
+
+    def scale_font(self, delta: float):
+        """Grow/shrink the editor text, clamped to 8..32sp."""
+        self._font_size = min(32.0, max(8.0, self._font_size + delta))
+        if self.value_input is not None:
+            self.value_input.font_size = f"{self._font_size}sp"
+        if self.key_input is not None:
+            self.key_input.font_size = f"{self._font_size}sp"
 
     def go_home(self):
         self.manager.current = "home"
+
+    def go_back(self):
+        """Return to the chart/forecast screen we jumped in from, if any."""
+        target = self.return_screen if self.return_screen in self.manager.screen_names else "home"
+        self.return_screen = None
+        self.manager.current = target
 
     def select_category(self, label: str) -> None:
         category = _LABEL_TO_CATEGORY.get(label, self._category)
@@ -107,6 +127,23 @@ class InterpretationEditorScreen(Screen):
         self._category = category
         self._selected_key = ""
         self._sync_entry_spinner()
+        self._update_color_swatch()
+
+    def jump_to_category(self, category_key: str) -> None:
+        """Switch to the editor category matching a report ``[ref]`` span.
+
+        Called when the user taps a colour-coded, clickable span in a chart /
+        forecast report; *category_key* is the interpretation-editor key
+        embedded in that span's ``[ref=...]`` tag. Falls back to the current
+        category when the key is unknown.
+        """
+        if category_key not in _CATEGORY_LABELS:
+            return
+        self._category = category_key
+        self._selected_key = ""
+        self._sync_category_spinner()
+        self._sync_entry_spinner()
+        self._update_color_swatch()
 
     def select_entry(self, key: str) -> None:
         if key == self._selected_key:
@@ -142,6 +179,7 @@ class InterpretationEditorScreen(Screen):
         self._reload_library()
         self._selected_key = ""
         self._sync_entry_spinner()
+        self._update_color_swatch()
         self._set_status("Reloaded the interpretation library.")
 
     def restore_defaults(self):
@@ -150,6 +188,7 @@ class InterpretationEditorScreen(Screen):
         save_interpretation_library(self._library, interpretation_library_path())
         self._selected_key = ""
         self._sync_entry_spinner()
+        self._update_color_swatch()
         self._set_status("Restored the default interpretation library.")
 
     # -- internals ----------------------------------------------------------
@@ -202,6 +241,25 @@ class InterpretationEditorScreen(Screen):
             self.key_input.text = key
         if self.value_input is not None:
             self.value_input.text = value
+
+    def _update_color_swatch(self) -> None:
+        """Paint the color swatch to match the active category's report color."""
+        if self.color_swatch is None:
+            return
+        hex_code = CATEGORY_COLORS.get(self._category, "E0E0E0")
+        rgba = _hex_to_rgba(hex_code)
+        swatch = self.color_swatch
+        swatch.canvas.before.clear()
+        from kivy.graphics import Color, Rectangle
+        with swatch.canvas.before:
+            Color(*rgba)
+            swatch._swatch_rect = Rectangle(pos=swatch.pos, size=swatch.size)
+
+        # Keep the rectangle in sync when the label moves / resizes.
+        def _sync_rect(_instance, _value):
+            swatch._swatch_rect.pos = swatch.pos
+            swatch._swatch_rect.size = swatch.size
+        swatch.bind(pos=_sync_rect, size=_sync_rect)
 
     def _set_status(self, text: str) -> None:
         if self.status_label is not None:

@@ -196,6 +196,11 @@
                                 size_hint_x: None
                                 width: 90
                                 on_release: root.go_to_database()
+                            Button:
+                                text: "Synastry"
+                                size_hint_x: None
+                                width: 80
+                                on_release: root.go_to_synastry()
 
                         Label:
                             text: "Date (YYYY-MM-DD):"
@@ -306,6 +311,9 @@
                         Button:
                             text: "Sun-Sign Forecasts"
                             on_release: root.go_to_sun_signs()
+                        Button:
+                            text: "Divination"
+                            on_release: root.go_to_divination()
                         Button:
                             text: "Sky Panel"
                             on_release: root.go_to_sky()
@@ -554,13 +562,19 @@
                     height: 24
 
                 ScrollView:
-                    TextInput:
+                    do_scroll_x: False
+                    bar_width: 4
+                    Label:
                         id: chart_output
-                        readonly: True
+                        markup: True
                         font_size: "12sp"
                         size_hint_y: None
-                        height: max(self.minimum_height, self.parent.height)
+                        text_size: self.width, None
+                        height: self.texture_size[1]
                         text: ""
+                        padding: 6, 4
+                        halign: "left"
+                        valign: "top"
                 Label:
                     id: chart_status
                     text: ""
@@ -839,13 +853,17 @@
                             pos: self.pos
                             size: self.size
                             radius: [10]
-                    TextInput:
+                    Label:
                         id: forecast_output
-                        readonly: True
+                        markup: True
                         font_size: "13sp"
                         size_hint_y: None
-                        height: max(self.minimum_height, self.parent.height)
+                        text_size: self.width, None
+                        height: self.texture_size[1]
                         text: ""
+                        padding: 6, 4
+                        halign: "left"
+                        valign: "top"
 
         BoxLayout:
             size_hint_y: None
@@ -885,6 +903,7 @@
     key_input: key_input
     value_input: value_input
     status_label: status_label
+    color_swatch: color_swatch
     BoxLayout:
         orientation: "vertical"
         padding: 16
@@ -914,13 +933,29 @@
                 text: "Category:"
                 size_hint_y: None
                 height: 32
-            Spinner:
-                id: category_spinner
-                text: "Sun sign keywords"
-                values: ["Sun sign keywords", "Aspect keywords", "Planet roles", "Sky aspect wording", "Sky planet notes", "Sign sky notes", "Planet in sign", "Planet in house", "Sun / Moon blend", "Planet-pair aspect", "Angle in sign", "Retrograde note", "Forecast ingress", "Forecast station", "Forecast lunation"]
+            BoxLayout:
+                orientation: "horizontal"
+                spacing: 6
                 size_hint_y: None
                 height: 32
-                on_text: root.select_category(self.text)
+                Spinner:
+                    id: category_spinner
+                    text: "Sun sign keywords"
+                    values: ["Sun sign keywords", "Aspect keywords", "Planet roles", "Sky aspect wording", "Sky planet notes", "Sign sky notes", "Planet in sign", "Planet in house", "Sun / Moon blend", "Planet-pair aspect", "Angle in sign", "Retrograde note", "Forecast ingress", "Forecast station", "Forecast lunation"]
+                    size_hint_x: 1
+                    height: 32
+                    on_text: root.select_category(self.text)
+                Label:
+                    id: color_swatch
+                    size_hint_x: None
+                    width: 32
+                    text: ""
+                    canvas.before:
+                        Color:
+                            rgba: 1, 1, 1, 1
+                        Rectangle:
+                            pos: self.pos
+                            size: self.size
 
             Label:
                 text: "Entry:"
@@ -960,6 +995,16 @@
             height: 44
             spacing: 8
             Button:
+                text: "A-"
+                size_hint_x: None
+                width: 56
+                on_release: root.scale_font(-1)
+            Button:
+                text: "A+"
+                size_hint_x: None
+                width: 56
+                on_release: root.scale_font(1)
+            Button:
                 text: "Save"
                 on_release: root.save_entry()
             Button:
@@ -968,6 +1013,9 @@
             Button:
                 text: "Restore defaults"
                 on_release: root.restore_defaults()
+            Button:
+                text: "Back to report"
+                on_release: root.go_back()
             Button:
                 text: "Home"
                 on_release: root.go_home()
@@ -1060,6 +1108,312 @@
             Button:
                 text: "Full report"
                 on_release: root.show_full_report()
+        Label:
+            id: chart_status
+            text: ""
+            color: 0.9, 0.4, 0.2, 1
+            size_hint_y: None
+            height: 28
+
+
+<DivinationScreen>:
+    name: "divination"
+    question_input: question_input
+    method_spinner: method_spinner
+    divination_output: divination_output
+    divination_status: divination_status
+    cast_widget: cast_widget
+    hex_window: hex_window
+
+    BoxLayout:
+        orientation: "vertical"
+        padding: 8
+        spacing: 8
+        canvas.before:
+            Color:
+                rgba: 0.08, 0.09, 0.12, 1
+            Rectangle:
+                pos: self.pos
+                size: self.size
+
+        # Top bar: title + status
+        BoxLayout:
+            size_hint_y: None
+            height: 36
+            spacing: 8
+            Label:
+                text: "DIVINATION — I CHING"
+                bold: True
+                font_size: "16sp"
+            Label:
+                id: divination_status
+                text: root.status_text
+                color: 0.9, 0.4, 0.2, 1
+
+        # Question + method row
+        BoxLayout:
+            size_hint_y: None
+            height: 40
+            spacing: 8
+            Label:
+                text: "Question:"
+                size_hint_x: None
+                width: 80
+            TextInput:
+                id: question_input
+                hint_text: "What do you wish to ask?"
+                multiline: False
+            Label:
+                text: "Method:"
+                size_hint_x: None
+                width: 70
+            Spinner:
+                id: method_spinner
+                text: "Three-Coin Toss"
+                values: ["Three-Coin Toss", "Yarrow Stalks"]
+                size_hint_x: None
+                width: 170
+
+        # Animation window + report side by side
+        BoxLayout:
+            spacing: 6
+
+            # Left: the cast animation (coin throws) + hexagram drawing
+            BoxLayout:
+                orientation: "vertical"
+                size_hint_x: 0.32
+                spacing: 4
+                Label:
+                    text: "The Casting"
+                    size_hint_y: None
+                    height: 24
+                    bold: True
+                IchingCastWidget:
+                    id: cast_widget
+                    callback: root._on_cast_complete
+                    line_callback: root._on_line_landed
+                    size_hint_y: 0.52
+                    canvas.before:
+                        Color:
+                            rgba: 0.05, 0.06, 0.08, 1
+                        Rectangle:
+                            pos: self.pos
+                            size: self.size
+                Label:
+                    text: "Hexagram"
+                    size_hint_y: None
+                    height: 24
+                    bold: True
+                HexagramWindow:
+                    id: hex_window
+                    canvas.before:
+                        Color:
+                            rgba: 0.05, 0.06, 0.08, 1
+                        Rectangle:
+                            pos: self.pos
+                            size: self.size
+
+            # Right: the reading report
+            BoxLayout:
+                orientation: "vertical"
+                size_hint_x: 0.68
+                spacing: 4
+                Label:
+                    text: "The Reading"
+                    size_hint_y: None
+                    height: 24
+                    bold: True
+                    halign: "left"
+                ScrollView:
+                    do_scroll_x: False
+                    bar_width: 4
+                    TextInput:
+                        id: divination_output
+                        text: "Ask your question and press Cast to receive the oracle."
+                        readonly: True
+                        multiline: True
+                        font_size: "12sp"
+                        foreground_color: 0.90, 0.92, 0.95, 1
+                        background_color: 0.05, 0.06, 0.08, 1
+                        cursor_color: 0.90, 0.92, 0.95, 0.35
+                        size_hint_y: None
+                        height: max(self.minimum_height, self.parent.height)
+                        padding: 6, 4
+
+        # Bottom button bar
+        BoxLayout:
+            size_hint_y: None
+            height: 44
+            spacing: 6
+            Button:
+                text: "Cast"
+                bold: True
+                on_release: root.throw_next()
+            Button:
+                text: "Cancel"
+                on_release: root.cancel_cast()
+            Button:
+                text: "Copy"
+                on_release: root.copy_output()
+            Button:
+                text: "A-"
+                on_release: root.scale_font(-1)
+            Button:
+                text: "A+"
+                on_release: root.scale_font(1)
+            Button:
+                text: "Home"
+                on_release: root.go_home()
+
+
+<SynastryScreen>:
+    name: "synastry"
+    chart_host_a: chart_host_a
+    wheel_a: wheel_a
+    chart_host_b: chart_host_b
+    wheel_b: wheel_b
+    synastry_output: synastry_output
+    picker_a: picker_a
+    picker_b: picker_b
+    synastry_status: synastry_status
+
+    BoxLayout:
+        orientation: "vertical"
+        padding: 8
+        spacing: 8
+        canvas.before:
+            Color:
+                rgba: 0.08, 0.09, 0.12, 1
+            Rectangle:
+                pos: self.pos
+                size: self.size
+
+        # Top bar: title + status
+        BoxLayout:
+            size_hint_y: None
+            height: 36
+            spacing: 8
+            Label:
+                text: "SYNASTRY COMPATIBILITY"
+                bold: True
+                font_size: "16sp"
+            Label:
+                id: synastry_status
+                text: "A: -   |   B: -"
+                color: 0.9, 0.4, 0.2, 1
+
+        # Person selectors
+        BoxLayout:
+            size_hint_y: None
+            height: 40
+            spacing: 8
+            Spinner:
+                id: picker_a
+                text: "Person A"
+                on_text: root.pick_chart_a(self.text)
+            Label:
+                text: "vs"
+                size_hint_x: None
+                width: 30
+            Spinner:
+                id: picker_b
+                text: "Person B"
+                on_text: root.pick_chart_b(self.text)
+
+        # Main 3-column layout: wheel A | center report | wheel B
+        BoxLayout:
+            spacing: 6
+
+            # Left column: Person A wheel
+            BoxLayout:
+                orientation: "vertical"
+                size_hint_x: 0.30
+                spacing: 4
+                Label:
+                    text: "Person A"
+                    size_hint_y: None
+                    height: 24
+                    bold: True
+                SquareWheelHost:
+                    id: chart_host_a
+                    ChartWheel:
+                        id: wheel_a
+
+            # Center column: synastry report
+            BoxLayout:
+                orientation: "vertical"
+                size_hint_x: 0.40
+                spacing: 4
+                Label:
+                    text: "Compatibility Report"
+                    size_hint_y: None
+                    height: 24
+                    bold: True
+                ScrollView:
+                    do_scroll_x: False
+                    bar_width: 4
+                    TextInput:
+                        id: synastry_output
+                        text: "Pick two charts and press Generate to see the synastry report."
+                        readonly: True
+                        multiline: True
+                        font_size: "12sp"
+                        foreground_color: 0.90, 0.92, 0.95, 1
+                        background_color: 0.05, 0.06, 0.08, 1
+                        cursor_color: 0.90, 0.92, 0.95, 0.35
+                        size_hint_y: None
+                        height: max(self.minimum_height, self.parent.height)
+                        padding: 6, 4
+
+            # Right column: Person B wheel
+            BoxLayout:
+                orientation: "vertical"
+                size_hint_x: 0.30
+                spacing: 4
+                Label:
+                    text: "Person B"
+                    size_hint_y: None
+                    height: 24
+                    bold: True
+                SquareWheelHost:
+                    id: chart_host_b
+                    ChartWheel:
+                        id: wheel_b
+
+        # Bottom button bar
+        BoxLayout:
+            size_hint_y: None
+            height: 44
+            spacing: 6
+            Button:
+                text: "Generate"
+                on_release: root.generate()
+            Button:
+                text: "Swap A<->B"
+                on_release: root.swap_sides()
+            Button:
+                text: "Copy"
+                on_release: root.copy_output()
+            Button:
+                text: "A-"
+                on_release: root.scale_font(-1)
+            Button:
+                text: "A+"
+                on_release: root.scale_font(1)
+            Button:
+                text: "Database"
+                on_release: root.go_to_database()
+            Button:
+                text: "Interpretations"
+                on_release: root.go_to_interpretations()
+            Button:
+                text: "Chart"
+                on_release: root.go_to_chart()
+            Button:
+                text: "Home"
+                on_release: root.go_home()
+
+
             Button:
                 text: "Copy"
                 on_release: root.copy_output()

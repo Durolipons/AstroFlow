@@ -19,7 +19,7 @@ All documentation now lives in the [`docs/`](docs/) folder:
 py -3.10 -m venv .venv
 .venv\Scripts\activate          # Windows
 pip install -r requirements.txt
-python run_app.py
+py -3.10 run_app.py
 ```
 
 Requires **Python 3.10** (ready-made wheels for `pyswisseph` + Kivy). Works

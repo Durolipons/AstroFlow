@@ -23,11 +23,13 @@ from .screens import (
     ChartScreen,
     ChineseChartScreen,
     DatabaseScreen,
+    DivinationScreen,
     ForecastScreen,
     HomeScreen,
     InterpretationEditorScreen,
     SkyScreen,
     SunSignForecastScreen,
+    SynastryScreen,
     VedicChartScreen,
 )
 
@@ -69,10 +71,12 @@ class AstroFlowApp(App):
         sm.add_widget(VedicChartScreen(name="vedic"))
         sm.add_widget(ChineseChartScreen(name="chinese"))
         sm.add_widget(DatabaseScreen(name="database"))
+        sm.add_widget(DivinationScreen(name="divination"))
         sm.add_widget(ForecastScreen(name="forecast"))
+        sm.add_widget(SkyScreen(name="sky"))
+        sm.add_widget(SynastryScreen(name="synastry"))
         sm.add_widget(SunSignForecastScreen(name="sun_sign"))
         sm.add_widget(InterpretationEditorScreen(name="interpretations"))
-        sm.add_widget(SkyScreen(name="sky"))
         return sm
 
     def on_start(self):

@@ -25,8 +25,11 @@ No technical knowledge is required for anything in this manual.
 Start the application:
 
 ```
-python run_app.py
+py -3.10 run_app.py
 ```
+
+If you prefer `python run_app.py`, activate a Python 3.10/3.11 environment
+for AstroFlow first.
 
 A window opens showing the **Home screen**: the birth-data form on the left
 and the **Astro-Clock** (a live clock with the current sky) on the right.

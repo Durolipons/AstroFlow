@@ -35,6 +35,20 @@ Reference/
 # --- pytest ---
 .pytest_cache/
 
+# --- One-off analysis/debug scratch (never source) ---
+_db*.py
+_analyze_*.py
+_*scratch*
+_summary.txt
+_test.txt
+
+# --- Editor/backup detritus ---
+*.bak
+*.orig
+
+# --- Runtime-generated trace logs (app writes these at runtime) ---
+divination_trace.txt
+
 # --- Swiss Ephemeris data files (large binaries, downloaded separately) ---
 # Drop the official sepl_*.se1 / seas_*.se1 files into core/ephe/ for full
 # precision. The engine falls back to the built-in Moshier ephemeris when

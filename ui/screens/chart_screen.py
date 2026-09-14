@@ -44,6 +44,8 @@ class ChartScreen(Screen):
             self.wheel.bind(on_planet_selected=self._on_planet_picked)
             self.wheel.bind(on_sign_selected=self._on_sign_picked)
             self.wheel.bind(on_aspect_selected=self._on_aspect_picked)
+        if self.chart_output is not None:
+            self.chart_output.bind(on_ref_press=self._on_report_ref)
         if self.chart_host is not None and self.wheel is not None:
             self.chart_host.wheel = self.wheel
             self.chart_host._sync_wheel()
@@ -72,6 +74,13 @@ class ChartScreen(Screen):
         if self._natal_chart and self.chart_output is not None:
             self.chart_output.text = sign_detail_text(self._natal_chart,
                                                       sign_name)
+
+    def _on_report_ref(self, _label, category_key: str):
+        """Jump from a clickable, colour-coded span to the matching editor entry."""
+        editor = self.manager.get_screen("interpretations")
+        editor.return_screen = self.name
+        editor.jump_to_category(category_key)
+        self.manager.current = "interpretations"
 
     def copy_output(self, *_args):
         """Copy the interpretation text to the clipboard."""

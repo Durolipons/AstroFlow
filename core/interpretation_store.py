@@ -1797,7 +1797,133 @@ def _default_yin_yang_text() -> Dict[str, str]:
     }
 
 
-# Maps forecast-only field names to the callable that rebuilds their
+# Synastry relationship interpretation defaults ---------------------------------
+# Key format for synastry_aspect:  "Venus (A) Trine Mars (B)"
+# Key format for synastry_house:   "Sun (A) in house 7 (B)"
+# Key format for synastry_element: "Fire-Earth"
+# Key format for synastry_score:   "80-100", "65-79", "50-64", "35-49", "0-34"
+
+_SYNASTRY_BODIES: tuple[str, ...] = (
+    "Sun", "Moon", "Mercury", "Venus", "Mars",
+    "Jupiter", "Saturn", "Uranus", "Neptune", "Pluto", "Chiron",
+)
+
+_SYNASTRY_PAIR_NOTES: dict[tuple[str, str], str] = {
+    ("Sun", "Moon"): "conscious self meets instinctive need - a core soul-mate pull",
+    ("Moon", "Moon"): "emotional worlds mirror each other - instant felt familiarity",
+    ("Sun", "Sun"): "two identities in direct meeting - recognition and friction",
+    ("Venus", "Mars"): "desire answers desire - romantic and sexual electricity",
+    ("Venus", "Venus"): "shared values and taste - how each loves becomes a bridge",
+    ("Mars", "Mars"): "two wills spark - competitive heat and shared drive",
+    ("Venus", "Sun"): "the lover's warmth meets the beloved's light",
+    ("Mars", "Moon"): "assertion meets feeling - protective or provoking",
+    ("Saturn", "Sun"): "structure frames identity - karmic responsibility",
+    ("Saturn", "Moon"): "duty holds emotion - security or repression",
+    ("Saturn", "Venus"): "commitment tests love - enduring or heavy",
+    ("Jupiter", "Sun"): "belief uplifts identity - growth through each other",
+    ("Jupiter", "Venus"): "abundance sweetens affection - generous warmth",
+    ("Uranus", "Sun"): "the unexpected awakens identity - electric disruption",
+    ("Uranus", "Venus"): "freedom electrifies desire - unconventional magnetism",
+    ("Neptune", "Sun"): "dream veils the self - idealisation and inspiration",
+    ("Neptune", "Moon"): "two imaginations dissolve - empathic fog or mystical bond",
+    ("Neptune", "Venus"): "romantic illusion colours love - sacred or deceptive",
+    ("Pluto", "Sun"): "power reshapes the self - transformative intensity",
+    ("Pluto", "Moon"): "depth fuses with feeling - cathartic or consuming",
+    ("Pluto", "Venus"): "obsession bonds desire - all-or-nothing devotion",
+    ("Pluto", "Mars"): "power meets force - dominance, struggle or forging",
+    ("Chiron", "Moon"): "the healer's wound meets the nurturer - tender mending",
+    ("Chiron", "Venus"): "vulnerability bonds love - wounding and healing together",
+    ("Chiron", "Sun"): "the wounded healer meets the self - teaching through pain",
+}
+
+
+def _default_synastry_aspect_text() -> Dict[str, str]:
+    """Cross-chart aspect phrasing (A planet -> B planet, 11x10x9x2 = 1980).
+
+    Key format: ``"{p1} ({side1}) {aspect} {p2} ({side2})"`` where side is A/B.
+    Covers both directions: "Venus (A) Trine Mars (B)" and "Mars (B) Trine Venus (A)".
+    """
+    aspects = _default_aspect_text()
+    out: Dict[str, str] = {}
+    for p1 in _SYNASTRY_BODIES:
+        for p2 in _SYNASTRY_BODIES:
+            if p1 == p2:
+                continue
+            note = _SYNASTRY_PAIR_NOTES.get(
+                (p1, p2),
+                _SYNASTRY_PAIR_NOTES.get(
+                    (p2, p1),
+                    f"{p1}'s energy meets {p2} across the relationship"))
+            verb = aspects.get("Trine", "flows easily")
+            for aspect in _ASPECT_TYPES:
+                verb = aspects.get(aspect, f"{aspect} contact")
+                for s1, s2 in (("A", "B"), ("B", "A")):
+                    key = f"{p1} ({s1}) {aspect} {p2} ({s2})"
+                    out[key] = f"{key}: {note}; {verb}"
+    return out
+
+
+def _default_synastry_house_text() -> Dict[str, str]:
+    """House-overlay phrasing (A planet in B house, 11x12x2 = 264).
+
+    Key format: ``"{planet} ({side}) in house {n} ({other})"``
+    e.g. "Sun (A) in house 7 (B)".
+    """
+    roles = _default_planet_role()
+    out: Dict[str, str] = {}
+    for planet in _SYNASTRY_BODIES:
+        role = roles.get(planet, planet)
+        for n in range(1, 13):
+            arena = _HOUSE_ARENA.get(n, f"house {n}")
+            arena_short = arena.split("--")[0].strip()
+            for side, other in (("A", "B"), ("B", "A")):
+                key = f"{planet} ({side}) in house {n} ({other})"
+                out[key] = (
+                    f"{key}: {role} activates {other}'s {arena_short} "
+                    f"- the house where {other} meets {arena_short}")
+    return out
+
+
+def _default_synastry_element_text() -> Dict[str, str]:
+    """Element-pair chemistry between two charts.
+
+    Key format: ``"{el1}-{el2}"`` for each unordered pair including same-element.
+    """
+    elements = ("Fire", "Earth", "Air", "Water")
+    out: Dict[str, str] = {}
+    notes = {
+        ("Fire", "Fire"): "two fires - passionate, dramatic, easily ignited",
+        ("Fire", "Earth"): "fire meets earth - inspiration meets practical form",
+        ("Fire", "Air"): "fire meets air - sparks fly, enthusiasm feeds ideas",
+        ("Fire", "Water"): "fire meets water - steam, emotion, volatile chemistry",
+        ("Earth", "Earth"): "two earths - steady, sensual, slow-building trust",
+        ("Earth", "Air"): "earth meets air - grounded thought or stifled freedom",
+        ("Earth", "Water"): "earth meets water - fertile mud, nurturing growth",
+        ("Air", "Air"): "two airs - lively minds, ideas in constant motion",
+        ("Air", "Water"): "air meets water - thought meets feeling, misty communication",
+        ("Water", "Water"): "two waters - deep empathy, intuitive merging",
+    }
+    for i, e1 in enumerate(elements):
+        for e2 in elements[i:]:
+            note = notes.get((e1, e2), f"{e1} and {e2} temperaments meet")
+            out[f"{e1}-{e2}"] = f"{e1}-{e2}: {note}"
+            if e1 != e2:
+                out[f"{e2}-{e1}"] = f"{e2}-{e1}: {note}"
+    return out
+
+
+def _default_synastry_score_text() -> Dict[str, str]:
+    """Score-band verdict phrasing for the overall compatibility score."""
+    return {
+        "80-100": "Exceptional bond - rare harmony, deep recognition, lasting potential",
+        "65-79": "Harmonious - strong natural flow with manageable growth edges",
+        "50-64": "Workable with growth - complementary differences that ask for conscious effort",
+        "35-49": "Challenging - real friction that demands maturity and compromise",
+        "0-34": "Volatile - intense magnetism with high risk of burn-out or power struggle",
+    }
+
+
+    return out
 # *previously shipped* defaults, so ``InterpretationLibrary.from_dict`` can
 # upgrade a saved value that still matches the old wording exactly, while
 # leaving any genuine astrologer customisation untouched.
@@ -1901,6 +2027,15 @@ class InterpretationLibrary:
         default_factory=_default_chinese_element_text)
     yin_yang: Dict[str, str] = field(
         default_factory=_default_yin_yang_text)
+    # --- Synastry compatibility libraries ---
+    synastry_aspect: Dict[str, str] = field(
+        default_factory=_default_synastry_aspect_text)
+    synastry_house: Dict[str, str] = field(
+        default_factory=_default_synastry_house_text)
+    synastry_element: Dict[str, str] = field(
+        default_factory=_default_synastry_element_text)
+    synastry_score: Dict[str, str] = field(
+        default_factory=_default_synastry_score_text)
 
     @classmethod
     def from_dict(cls, data: Optional[dict]) -> "InterpretationLibrary":
@@ -1938,7 +2073,9 @@ class InterpretationLibrary:
                            "nakshatra_text", "dasha_text",
                            "vedic_glossary", "planet_dosha",
                            "chinese_zodiac", "chinese_element",
-                           "yin_yang"):
+                            "yin_yang", "synastry_aspect",
+                            "synastry_house", "synastry_element",
+                            "synastry_score"):
             incoming = data.get(field_name)
             if not isinstance(incoming, dict):
                 continue
@@ -2001,6 +2138,10 @@ class InterpretationLibrary:
             "chinese_zodiac": dict(self.chinese_zodiac),
             "chinese_element": dict(self.chinese_element),
             "yin_yang": dict(self.yin_yang),
+            "synastry_aspect": dict(self.synastry_aspect),
+            "synastry_house": dict(self.synastry_house),
+            "synastry_element": dict(self.synastry_element),
+            "synastry_score": dict(self.synastry_score),
         }
 
 

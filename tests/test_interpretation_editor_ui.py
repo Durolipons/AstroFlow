@@ -125,6 +125,62 @@ def test_editor_rejects_blank_text(editor_screen):
     assert "cannot be blank" in screen.status_label.text.lower()
 
 
+def test_editor_real_category_key_and_return_screen(editor_screen):
+    """jump_to_category (used by clickable report spans) selects the editor
+    category and go_back returns to the report screen we came from."""
+    screen, _ = editor_screen
+    screen.return_screen = "forecast"
+
+    # A report span carrying the planet_in_sign key lands the editor there.
+    screen.jump_to_category("planet_sign")
+    assert screen._category == "planet_sign"
+
+    # Unknown keys are ignored (editor stays put).
+    screen.jump_to_category("not_a_category")
+    assert screen._category == "planet_sign"
+
+    # Back goes to the originating report screen and resets the pointer.
+    from kivy.clock import Clock
+    for _ in range(2):
+        Clock.tick()
+    screen.go_back()
+    assert screen.manager.current == "forecast"
+    assert screen.return_screen is None
+
+
+def test_editor_home_falls_back_when_no_return_screen(editor_screen):
+    """go_back without a valid originating report screen lands on Home."""
+    screen, _ = editor_screen
+    screen.return_screen = None
+    screen.go_back()
+    assert screen.manager.current == "home"
+
+
+def test_editor_font_scaling(editor_screen):
+    """A-/A+ buttons grow and shrink the editor text within 8..32sp."""
+    screen, _ = editor_screen
+    screen.scale_font(0)  # no-op keeps baseline
+    assert screen._font_size == 14.0
+    baseline = screen.value_input.font_size
+
+    screen.scale_font(1)
+    assert screen._font_size == 15.0
+    assert screen.value_input.font_size > baseline
+    assert screen.key_input.font_size > baseline
+
+    screen.scale_font(-1)
+    assert screen._font_size == 14.0
+    assert screen.value_input.font_size == baseline
+
+    # clamping
+    screen.scale_font(1000)
+    assert screen._font_size == 32.0
+    assert screen.value_input.font_size == 32.0
+    screen.scale_font(-1000)
+    assert screen._font_size == 8.0
+    assert screen.value_input.font_size == 8.0
+
+
 def test_editor_shows_new_natal_categories(editor_screen):
     """New natal combination categories appear in the spinner."""
     screen, _ = editor_screen

@@ -169,6 +169,24 @@ class HomeScreen(Screen):
         db_screen.set_context_birth_data(bd)
         self.manager.current = "database"
 
+    def go_to_synastry(self):
+        """Navigate to the Synastry screen, passing current birth data as Person A."""
+        try:
+            bd = self._build_birth_data()
+        except ValueError as exc:
+            self._set_status(f"Error: {exc}")
+            return
+        syn_screen = self.manager.get_screen("synastry")
+        syn_screen.set_person_a(bd)
+        self.manager.current = "synastry"
+
+    def go_to_divination(self):
+        """Open the Divination (I Ching) panel. No birth data required."""
+        self.manager.current = "divination"
+
+    def apply_birth_data(self, bd):
+        self.manager.current = "database"
+
     def apply_birth_data(self, bd):
         """Fill the Home-screen form fields from a BirthData object."""
         self.name_input.text = bd.name

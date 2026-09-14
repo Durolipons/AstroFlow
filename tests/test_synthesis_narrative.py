@@ -418,7 +418,10 @@ def test_full_birth_report_prepends_synthesis_and_keeps_technical_body():
 
     assert report.startswith(natal_poetic_synthesis(chart))
     assert report.endswith(technical_body)
-    assert report.count("\nPLANETS\n") == 1
+    # "PLANETS" header is now wrapped in category color markup, so we check
+    # for the bold/colorized tag rather than the bare text.
+    assert "PLANETS" in report
+    assert report.count("PLANETS") == 1
 
 
 def test_sign_horoscope_text_uses_sun_sign_synthesis_once():
@@ -502,15 +505,17 @@ def test_full_forecast_report_embeds_sign_details_once_and_keeps_body():
     sign_details = sign_horoscope_text(
         horo, include_introduction=False, transit=transit,
     )
+    from core.interpretation import _rule_line
+    rule = _rule_line()
     technical_body = "\n".join([
         chart_report(progressed),
         "",
         progression_interpretation(progressed),
         "",
-        "=" * 64,
+        rule,
         solar_arc_interpretation(solar_arc),
         "",
-        "=" * 64,
+        rule,
         chart_report(transit.transit_chart),
         "",
         transit_interpretation(transit),
@@ -520,5 +525,5 @@ def test_full_forecast_report_embeds_sign_details_once_and_keeps_body():
     assert report.count(sign_details) == 1
     assert report.count("PLANETS IN YOUR SIGN") == 1
     assert report.count("ASPECTS TO YOUR SIGN") == 1
-    assert report.count("* PERSONAL FORECAST DETAILS *") == 1
+    assert report.count("PERSONAL FORECAST DETAILS") == 1
     assert report.endswith(technical_body)

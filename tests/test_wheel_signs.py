@@ -95,9 +95,8 @@ def test_readout_is_copyable_textinput():
     assert clock.readout_label.readonly is True
 
 
-def test_chart_output_is_copyable_textinput():
+def test_chart_output_is_markup_label():
     app, sm = _app()
     chart_scr = sm.get_screen("chart")
-    from kivy.uix.textinput import TextInput
-    assert isinstance(chart_scr.chart_output, TextInput)
-    assert chart_scr.chart_output.readonly is True
+    from kivy.uix.label import Label
+    assert isinstance(chart_scr.chart_output, Label)

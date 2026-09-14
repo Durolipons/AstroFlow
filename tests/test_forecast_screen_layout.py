@@ -128,5 +128,36 @@ def test_forecast_screen_uses_loaded_birth_data_and_generates_report():
     assert hasattr(forecast, "copy_output")
     assert forecast.copy_output() is True
     assert isinstance(forecast.forecast_output, __import__(
-        "kivy.uix.textinput", fromlist=["TextInput"]).TextInput)
-    assert forecast.forecast_output.readonly is True
+        "kivy.uix.label", fromlist=["Label"]).Label)
+
+
+def test_forecast_report_refs_jump_to_interpretation_editor():
+    """Tapping a colour-coded span in the forecast opens the matching editor
+    category and records the origin screen for the Back button."""
+    Window.size = (1200, 780)
+    app = AstroFlowApp()
+    sm = app.build()
+    app.root = sm
+    app._fix_window_size(0)
+    for _ in range(3):
+        Clock.tick()
+
+    bd = _birth_data()
+    forecast = sm.get_screen("forecast")
+    forecast.set_birth_data(bd)
+    forecast.generate_forecast()
+    for _ in range(2):
+        Clock.tick()
+
+    # The generated report embeds [ref=...] tags keyed to editor categories.
+    report = forecast._last_report or forecast.forecast_output.text
+    assert "[ref=planet_sign]" in report or "[ref=planet_house]" in report
+
+    # Simulate a tap on an aspect-coloured span: it should land on the
+    # "Planet-pair aspect" editor category and remember forecast as origin.
+    sm.current = "forecast"
+    editor = sm.get_screen("interpretations")
+    forecast._on_report_ref(None, "aspect_pair")
+    assert sm.current == "interpretations"
+    assert editor._category == "aspect_pair"
+    assert editor.return_screen == "forecast"
