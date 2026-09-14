@@ -41,8 +41,10 @@ jobs:
       - name: Downgrade libtool to 2.4.6 (restore LT_SYS_SYMBOL_USCORE needed by p4a libffi recipe)
         run: |
           cd /tmp
-          wget -q https://archive.ubuntu.com/ubuntu/pool/main/l/libtool/libtool_2.4.6-15build2_all.deb
-          wget -q https://archive.ubuntu.com/ubuntu/pool/main/l/libtool/libltdl7_2.4.6-15build2_amd64.deb
+          wget -q https://archive.ubuntu.com/ubuntu/pool/main/libt/libtool/libtool_2.4.6-15build2_all.deb || \
+            wget -q https://mirrors.edge.kernel.org/ubuntu/pool/main/libt/libtool/libtool_2.4.6-15build2_all.deb
+          wget -q https://archive.ubuntu.com/ubuntu/pool/main/libt/libtool/libltdl7_2.4.6-15build2_amd64.deb || \
+            wget -q https://mirrors.edge.kernel.org/ubuntu/pool/main/libt/libtool/libltdl7_2.4.6-15build2_amd64.deb
           sudo dpkg -i --force-downgrade libtool_2.4.6-15build2_all.deb libltdl7_2.4.6-15build2_amd64.deb
           libtool --version | head -n 1
 
