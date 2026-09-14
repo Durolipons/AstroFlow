@@ -9,7 +9,7 @@ environment, which is exactly what this module needs.
 
 import os
 
-from pythonforandroid.logger import info as logger
+from pythonforandroid.logger import info
 from pythonforandroid.recipe import CompiledComponentsPythonRecipe
 
 
@@ -49,7 +49,7 @@ class PySwissephRecipe(CompiledComponentsPythonRecipe):
             )
             with open(setup_py, "w", encoding="utf-8") as f:
                 f.write(src)
-            logger.info("pyswisseph: forced bundled internal sqlite3")
+            info("pyswisseph: forced bundled internal sqlite3")
         super().build_arch(arch)
 
 
